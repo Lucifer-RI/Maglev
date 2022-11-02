@@ -16,9 +16,6 @@
 
 class SystemStatus{
 public:
-    SystemStatus(int status_num = 3);  /* 构造函数 */
-    ~SystemStatus();  /* 析构函数 */
-
     void UpdateStatus(StatusData* pStatus); /* 更新SystemStatus */
 
     int DelClient(ServiceClient* del_client);   /* 从订阅列表中删除对应客户，返回操作状态码 */
@@ -29,8 +26,29 @@ public:
 
     void NotifyClients();  /* 遍历客户订阅列表，调用每个抽象客户类的publish函数进行推送 */
 
+    
+    static SystemStatus* GetInstance() 
+    /* SystemStatus设置为单例模式，使用GetInstance（）获取实例 */
+    {
+        if(StatusInstance == nullptr)
+        {
+            StatusInstance = new SystemStatus(3);
+        }
+        return StatusInstance;
+    }
+
 
 private:
+    SystemStatus(int status_num = 3);  /* 构造函数 */
+
+    ~SystemStatus();  /* 析构函数 */
+
+    SystemStatus(const SystemStatus&);
+
+    SystemStatus operator=(const SystemStatus&);
+
+    static SystemStatus* StatusInstance;   /* 唯一实例 */
+
     int StatusNum;  /* 目前关注的系统状态数量 */
 
     StatusData CurStatusData; /* 用于存放系统状态的数据结构 */

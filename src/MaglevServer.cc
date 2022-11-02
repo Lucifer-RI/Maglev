@@ -11,7 +11,7 @@ MaglevServer::MaglevServer(int feeds_num, int services_num, int server_status, i
 {
     pCurFeed = new Feeds(0, 0);   
     /* Feeds参数1为cur_time,构造时置0, 参数2为feed_status,初始未开始工作置0 */
-    pSysStatus = new SystemStatus(3);  
+    pSysStatus = nullptr;  
     /* SystemStatus参数1为status_num */
 
     /* Service列表和Fusion列表在开启后再将实例化指针添加到列表中 */
@@ -27,7 +27,7 @@ MaglevServer::~MaglevServer()
     
     /* 析构函数中释放Server中的指针成员，来释放内存空间 */
     delete pCurFeed;
-    delete pSysStatus;
+    pSysStatus = nullptr;
     delete pFusion;
 
     for(int i = 0; i < ServicesList.size(); ++i)
@@ -62,7 +62,7 @@ void MaglevServer::ServerStart(const std::vector<int>& ServicesPort, const std::
     pFusion = nullptr;  /* 在Fusion_startRun开始时再指向具体派生类 */
 
     /* 初始化系统状态类 */
-    pSysStatus = new SystemStatus(3);
+    pSysStatus = SystemStatus::GetInstance();
 
     /* 打印系统初始状态 */
     pSysStatus->StatusMonitor();

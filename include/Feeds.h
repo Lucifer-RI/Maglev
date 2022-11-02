@@ -26,7 +26,6 @@ struct RawData {
     int IMUFlag;    /* IMU传感器通道接受数据标识 */
     double RFIDpos;    /* RFID传感器的定位观测值 */
     int RFIDFlag;   /* RFID传感器通道接受数据标识 */
-
     int RawTime;    /* 记录每一次的数据采集驱动时间 */
 
 };

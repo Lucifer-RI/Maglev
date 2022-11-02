@@ -8,7 +8,7 @@
 KF::KF(int status_size, int measure_size, int u_size, int feeds_num, std::string fusion_name)
     : StatusSize(status_size), MeasureSize(measure_size), Usize(u_size), DataFusion(feeds_num, fusion_name)
 {
-    pStatus = nullptr;  /* TODO: 将系统状态改成单例模式，在此处调用GetInstance */
+    pStatus = SystemStatus::GetInstance();  /* 将系统状态改成单例模式，在此处调用GetInstance */
     FusionStatus = 1;  /* 融合状态标志 */
 }
 
