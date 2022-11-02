@@ -18,15 +18,15 @@
 
 /* 数据源接收到的原生数据 */
 struct RawData {
-    double Magnet;  /* TMR磁场强度观测值 */
+    int Magnet;  /* TMR磁场强度观测值 */
     int MagnetFlag; /* TMR传感器通道接收数据标识 */
-    double IMUx;    /* IMU传感器的X方向加速度 */
-    double IMUy;    /* IMU传感器的Y方向加速度 */
-    double IMUz;    /* IMU传感器的Z方向加速度 */
+    int IMUx;    /* IMU传感器的X方向加速度 */
+    int IMUy;    /* IMU传感器的Y方向加速度 */
+    int IMUz;    /* IMU传感器的Z方向加速度 */
     int IMUFlag;    /* IMU传感器通道接受数据标识 */
-    double RFIDpos;    /* RFID传感器的定位观测值 */
+    int RFIDpos;    /* RFID传感器的定位观测值 */
     int RFIDFlag;   /* RFID传感器通道接受数据标识 */
-    int RawTime;    /* 记录每一次的数据采集驱动时间 */
+    long long RawTime;    /* 记录每一次的数据采集驱动时间 */
 
 };
 
