@@ -135,7 +135,6 @@ int Feeds::FeedsOpen()
 
     /* 采集时间 */
     time_t raw_time;
-    time(&raw_time);
 
     while(1)
     {
@@ -144,8 +143,8 @@ int Feeds::FeedsOpen()
         LenIMU=read(mFdIMU, BufferIMU, sizeof(BufferIMU));
         LenRFID=read(mFdRFID, BufferRFID, sizeof(BufferRFID));
 
-        /* 可在此处限制系统采样频率 */
-        usleep(50000);
+        /* 可在此处限制系统采样频率,此处为0.5s一次 */
+        usleep(500000);
 
         /* 用于存放原始数据协议解析值 */
         std::pair<int,int> ret_parser;
@@ -218,15 +217,18 @@ int Feeds::FeedsOpen()
                 }
             }
         }
-        /* 时间戳设置 */
-        Renew.RawTime = raw_time + 8*3600;
+        
         /* 完成临时结构体的更新则清空缓冲 */
         memset(BufferMagnet,0,sizeof(BufferMagnet));
         memset(BufferIMU,0,sizeof(BufferIMU));
         memset(BufferRFID,0,sizeof(BufferRFID));
 
-        /* 将临时结构体内容拷贝到mmap文件中 */
+        /* 时间戳设置 */
+        time(&raw_time);
+        Renew.RawTime = raw_time;   /* long int to long long */
         std::cout << "TimeStamp : " << raw_time << std::endl; 
+        
+        /* 将临时结构体内容拷贝到mmap文件中 */
         WriteData(&Renew);
     }
 }
@@ -300,5 +302,5 @@ int Feeds::IMUParser(std::string& IMUData)
 /* RFID传感器数据解析 */
 int Feeds::RFIDParser(std::string& RFIDData)
 {
-    
+
 }
