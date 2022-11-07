@@ -3,7 +3,7 @@
 #include <time.h>
 
 /* TODO: 解析函数功能测试 */
-std::pair<int,int> Feeds::RenewParser(char Buf[], int Length)
+std::pair<int,int> RenewParser(char Buf[], int Length)
 {
     std::pair<int,int> parser_result;
     int end_index = Length;
@@ -35,7 +35,6 @@ std::pair<int,int> Feeds::RenewParser(char Buf[], int Length)
             else
             {
                 parser_result.first = 1;
-                /* TODO: 取出有效数据段 */
                 real_data.resize(end_index - start_index + 1);
                 for(int i = start_index; i <= end_index; ++i)
                 {
@@ -61,7 +60,6 @@ std::pair<int,int> Feeds::RenewParser(char Buf[], int Length)
             else
             {
                 parser_result.first = 2;
-                /* TODO: 取出有效数据段 */
                 real_data.resize(end_index - start_index + 1);
                 for(int i = start_index; i <= end_index; ++i)
                 {
@@ -85,7 +83,6 @@ std::pair<int,int> Feeds::RenewParser(char Buf[], int Length)
             else
             {
                 parser_result.first = 3;
-                /* TODO: 取出有效数据段 */
                 real_data.resize(end_index - start_index + 1);
                 for(int i = start_index; i <= end_index; ++i)
                 {
