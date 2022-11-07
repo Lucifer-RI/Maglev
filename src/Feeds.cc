@@ -247,6 +247,8 @@ std::pair<int,int> Feeds::RenewParser(char Buf[], int Length)
 {
     std::pair<int,int> parser_result;
     int end_index = Length;
+    int start_index;
+    std::string real_data;
     while(end_index > 0 && Buf[end_index] != '}' && Buf[end_index] != ']' && Buf[end_index] != ')')
     {
         --end_index;
@@ -260,21 +262,77 @@ std::pair<int,int> Feeds::RenewParser(char Buf[], int Length)
     {
         if(Buf[end_index] == '}')
         {
-            parser_result.first = 1;
-            /* TODO: 取出有效数据段 */
-            // parser_result.second = MagParser()
+            start_index = end_index-1;
+            while(start_index >= 0 && Buf[start_index] != '{')
+            {
+                --start_index;
+            }
+            if(start_index < 0)
+            {
+                parser_result.first = -100;
+                return parser_result;
+            }
+            else
+            {
+                parser_result.first = 1;
+                /* TODO: 取出有效数据段 */
+                real_data.resize(end_index - start_index + 1);
+                for(int i = start_index; i <= end_index; ++i)
+                {
+                    real_data[i-start_index] = Buf[i];
+                }
+                parser_result.second = MagParser(real_data);
+            }
+            
         }
         else if(Buf[end_index] == ']')
         {
-            parser_result.first = 2;
-            /* TODO: 取出有效数据段 */
-            // parser_result.second = IMUParser()
+
+            start_index = end_index-1;
+            while(start_index >= 0 && Buf[start_index] != '[')
+            {
+                --start_index;
+            }
+            if(start_index < 0)
+            {
+                parser_result.first = -100;
+                return parser_result;
+            }
+            else
+            {
+                parser_result.first = 2;
+                /* TODO: 取出有效数据段 */
+                real_data.resize(end_index - start_index + 1);
+                for(int i = start_index; i <= end_index; ++i)
+                {
+                    real_data[i-start_index] = Buf[i];
+                }
+                parser_result.second = IMUParser(real_data);
+            }
         }
         else if(Buf[end_index] == ')')
-        {
-            parser_result.first = 3;
-            /* TODO: 取出有效数据段 */
-            // parser_result.second = RFIDParser()
+        { 
+            start_index = end_index-1;
+            while(start_index >= 0 && Buf[start_index] != '(')
+            {
+                --start_index;
+            }
+            if(start_index < 0)
+            {
+                parser_result.first = -100;
+                return parser_result;
+            }
+            else
+            {
+                parser_result.first = 3;
+                /* TODO: 取出有效数据段 */
+                real_data.resize(end_index - start_index + 1);
+                for(int i = start_index; i <= end_index; ++i)
+                {
+                    real_data[i-start_index] = Buf[i];
+                }
+                parser_result.second = RFIDParser(real_data);
+            }
         }
         else
         {
