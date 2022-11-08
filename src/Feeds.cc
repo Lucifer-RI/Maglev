@@ -244,11 +244,10 @@ int Feeds::FeedsOpen()
     数据为RFID类型则返回3；
 */
 
-/* TODO: 解析函数功能测试 */
 std::pair<int,int> Feeds::RenewParser(char Buf[], int Length)
 {
     std::pair<int,int> parser_result;
-    int end_index = Length;
+    int end_index = Length - 1;
     int start_index;
     std::string real_data;
     while(end_index > 0 && Buf[end_index] != '}' && Buf[end_index] != ']' && Buf[end_index] != ')')

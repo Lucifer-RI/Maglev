@@ -1,18 +1,20 @@
 #include <iostream>
 #include <unistd.h>
+#include <string>
 #include <time.h>
 
 /* TODO: 解析函数功能测试 */
 std::pair<int,int> RenewParser(char Buf[], int Length)
 {
     std::pair<int,int> parser_result;
-    int end_index = Length;
+    int end_index = Length-1;
     int start_index;
     std::string real_data;
     while(end_index > 0 && Buf[end_index] != '}' && Buf[end_index] != ']' && Buf[end_index] != ')')
     {
         --end_index;
     }
+    std::cout << end_index << std::endl; 
     if(end_index <= 0)
     {
         parser_result.first = -100;
@@ -30,6 +32,7 @@ std::pair<int,int> RenewParser(char Buf[], int Length)
             if(start_index < 0)
             {
                 parser_result.first = -100;
+                std::cout <<  -100 << std::endl;
                 return parser_result;
             }
             else
@@ -40,7 +43,8 @@ std::pair<int,int> RenewParser(char Buf[], int Length)
                 {
                     real_data[i-start_index] = Buf[i];
                 }
-                parser_result.second = MagParser(real_data);
+                std::cout << real_data << std::endl;
+                // parser_result.second = MagParser(real_data);
             }
             
         }
@@ -55,6 +59,7 @@ std::pair<int,int> RenewParser(char Buf[], int Length)
             if(start_index < 0)
             {
                 parser_result.first = -100;
+                std::cout <<  -100 << std::endl;
                 return parser_result;
             }
             else
@@ -65,7 +70,8 @@ std::pair<int,int> RenewParser(char Buf[], int Length)
                 {
                     real_data[i-start_index] = Buf[i];
                 }
-                parser_result.second = IMUParser(real_data);
+                std::cout << real_data << std::endl;
+                // parser_result.second = IMUParser(real_data);
             }
         }
         else if(Buf[end_index] == ')')
@@ -78,6 +84,7 @@ std::pair<int,int> RenewParser(char Buf[], int Length)
             if(start_index < 0)
             {
                 parser_result.first = -100;
+                std::cout <<  -100 << std::endl;
                 return parser_result;
             }
             else
@@ -88,7 +95,8 @@ std::pair<int,int> RenewParser(char Buf[], int Length)
                 {
                     real_data[i-start_index] = Buf[i];
                 }
-                parser_result.second = RFIDParser(real_data);
+                std::cout << real_data << std::endl;
+                // parser_result.second = RFIDParser(real_data);
             }
         }
         else
@@ -96,25 +104,29 @@ std::pair<int,int> RenewParser(char Buf[], int Length)
             std::cout << "Error parsing ..." << std::endl;
         }
     }
+    std::cout << "Confident result-> " << parser_result.first  << " : " << real_data << std::endl;
     return  parser_result;
 }
 
 
 int main()
 {
-    time_t start_time;
-    long long raw_time;
+    // time_t start_time;
+    // long long raw_time;
     // time(&start_time);
     // start_time = start_time + 8*3600;
 
-    while(1)
-    {
-        time(&start_time);
-        raw_time = start_time+8*3600;
-        std::cout <<  raw_time << std::endl;
-        std::cout <<  asctime(gmtime(&start_time)) << std::endl;
-        usleep(1000000);
-    }
+    // while(1)
+    // {
+    //     time(&start_time);
+    //     raw_time = start_time+8*3600;
+    //     std::cout <<  raw_time << std::endl;
+    //     std::cout <<  asctime(gmtime(&start_time)) << std::endl;
+    //     usleep(1000000);
+    // }
     
+    char buf[100] = "{12}12314142(325)346{344}";
+    std::cout << sizeof(buf) << std::endl;
+    RenewParser(buf, sizeof(buf));
     return 0;
 }
