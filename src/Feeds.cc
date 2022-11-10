@@ -96,6 +96,25 @@ void Feeds::WriteData(RawData* pData)
 }
 
 
+/* 从共享文件中读取最新数据 */
+/* 读取的数据为迭代过的数据则返回0，未迭代过的数据则返回1 */
+int Feeds::ReadData(RawData* pDataOut)
+{
+    if(mReadIndex >= mWriteIndex)
+    {
+        std::cout << "Wait Data from Feeds !!! Got Lastest Data !!!" << std::endl;
+        /* 此时情况为新数据都已经读取完毕，没有可用的新数据，则用最近一次的数据进行迭代 */
+        /* 此处获取的数据为写标志位前一位，即最新数据 */
+        memcpy(pDataOut, mStartAddr+mWriteIndex-1, sizeof(RawData));
+        return 0;
+    }
+    std::cout << "Reading Data !!! ReadIndex : " << mReadIndex << std::endl;
+    memcpy(pDtaOut, mStartAddr+mReadIndex, sizeof(RawData));
+    UpdateReadIndex();
+    return 1;
+}
+
+
 /* 数据源启动函数 */
 int Feeds::FeedsOpen()
 {   
@@ -104,6 +123,7 @@ int Feeds::FeedsOpen()
     char BufferIMU[BUFFER_LEN];
     char BufferRFID[BUFFER_LEN];
 
+    /* 开启驱动文件 */
     mFdMag = open(CHR_DEV_MAG,O_RDWR | O_NOCTTY);
     if(mFdMag < 0)
     {
@@ -112,6 +132,7 @@ int Feeds::FeedsOpen()
     }
     std::cout<<"FdMag is :"<<mFdMag<<std::endl;
 
+    /* 开启驱动文件 */
     mFdIMU = open(CHR_DEV_IMU,O_RDWR | O_NOCTTY);
     if(mFdIMU < 0)
     {
@@ -120,6 +141,7 @@ int Feeds::FeedsOpen()
     }
     std::cout<<"FdIMU is :"<<mFdIMU<<std::endl;
     
+    /* 开启驱动文件 */
     mFdRFID = open(CHR_DEV_RFID,O_RDWR | O_NOCTTY);
     if(mFdRFID < 0)
     {
@@ -135,13 +157,17 @@ int Feeds::FeedsOpen()
 
     /* 采集时间 */
     time_t raw_time;
-
+    
     while(1)
     {
         /* 此处的buffer数据不一定与名称对应，可以默认为三个相同缓冲区 */
         LenMag=read(mFdMag, BufferMagnet, sizeof(BufferMagnet));
         LenIMU=read(mFdIMU, BufferIMU, sizeof(BufferIMU));
         LenRFID=read(mFdRFID, BufferRFID, sizeof(BufferRFID));
+
+        /* TODOs: 此处设置仿真数据源 */
+        /* 仿真Magnet数据 */
+        
 
         /* 可在此处限制系统采样频率,此处为0.5s一次 */
         usleep(500000);
@@ -194,7 +220,7 @@ int Feeds::FeedsOpen()
                         break;
                 }
             }
-    
+
             if(LenRFID > 0)
             {
                 ret_parser = RenewParser(BufferRFID, LenRFID);

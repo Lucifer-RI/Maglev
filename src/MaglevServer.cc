@@ -83,6 +83,12 @@ void MaglevServer::FeedsStart()
 }
 
 
+Feeds* MaglevServer::GetCurFeeds()
+{
+    return pCurFeed;
+}
+
+
 /* FusionStart */
 // void MaglevServer::FusionStart(DataFusion* pExactlyFusion)
 // {

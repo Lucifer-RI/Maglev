@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <stdio.h>
 #include <Eigen/Dense>
+#include "Feeds.h"
 #include "DataFusion.h"
 #include "SystemStatus.h"
 
@@ -17,7 +18,7 @@
 class KF : public DataFusion{
 public:
     /* 构造函数 */
-    KF(int status_size, int mersure_size, int u_size, int feeds_num, std::string fusion_name);
+    KF(int status_size, int mersure_size, int u_size, int feeds_num, std::string fusion_name, Feeds* pfeeds);
     /* 析构函数 */
     virtual ~KF();
     /* 实际融合迭代函数,继承自DataFusion，动态多态 */
@@ -57,7 +58,11 @@ private:
 
     SystemStatus* pStatus;   /* 系统状态类的指针，指向唯一实例化的SystemStatus对象 */
 
+    Feeds* pFeed;     /* 系统数据源类的指针，用于获取观测数据 */
+
     int StatusSize;  /* 状态向量x的长度 */
     int MeasureSize; /* 观测向量z的长度 */
     int Usize;       /* 控制矩阵的行数，暂不考虑 */
+
+    long long MeasureTime;   /* 获取的数据时间戳 */
 };

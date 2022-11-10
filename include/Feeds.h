@@ -42,7 +42,7 @@ public:
     /*  */
     /*传感器数据更新，判断传感器数据类型，返回对应传感器数值*/
     
-    int DataParser(RawData* pData);  /* 用于解析一组RawData，提供给Fusion迭代计算使用 */
+    // int DataParser(RawData* pData);  /* 用于解析一组RawData，提供给Fusion迭代计算使用 */
 
     int MagParser(std::string& MagData);  /*  */
 
@@ -57,6 +57,7 @@ public:
     void UpdateWriteIndex(); /* 更新写标志位 */
 
     void WriteData(RawData* pData); /* 向共享文件中写入数据 */
+    int ReadData(RawData* pDataOut);   /* 从共享文件中读出最新传感器数据 */
 
 private:
     int FeedsStatus; /* 信号源标识，如有三路信号源则有6种状态 */

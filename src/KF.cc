@@ -5,11 +5,12 @@
 
 /* 构造函数 */
 /* 注意： 抽象基类中没有定义构造函数时不会有默认构造函数，需要在派生类的构造函数初始化列表中显示调用 */
-KF::KF(int status_size, int measure_size, int u_size, int feeds_num, std::string fusion_name)
+KF::KF(int status_size, int measure_size, int u_size, int feeds_num, std::string fusion_name, Feeds* pfeeds)
     : StatusSize(status_size), MeasureSize(measure_size), Usize(u_size), DataFusion(feeds_num, fusion_name)
 {
     pStatus = SystemStatus::GetInstance();  /* 将系统状态改成单例模式，在此处调用GetInstance */
     FusionStatus = 1;  /* 融合状态标志 */
+    pFeed = pfeeds;
 }
 
 
@@ -121,7 +122,38 @@ void KF::RunFunc()
 /* TODO: GetMeasure实现多通道传感器观测值获取*/ 
 Eigen::VectorXd KF::GetMeasure()
 {
+    /* 静态构造原始数据结构体 */
+    RawData NewData;
+    memset(&NewData, 0, sizeof(RawData));
+    int ret = pFeed->ReadData(&NewData);
+    /* ret 可用于调节滤波系统的数据获取筛选 */
+    Eigen::VectorXd MeasureData;
+    MeasureData.resize(MeasureSize);
+    /* 获取有限观测数据 */
+    /* Magnet需要转化成常规pos数据和speed数据 */
 
+    /* Pos */
+    if(NewData.RFIDFlag == 1)
+    {
+        MeasureData(0) = NewData.RFIDpos;
+    }
+    else
+    {
+        /* MagToPos */
+        // MagToPos(Magnet), 由磁场传感器转换到Pos信息
+        // MeasureData(0) = MagToPos(NewData.Magnet);
+    }
+
+    /* Speed */
+    /* 存在多种计算方式，更据前一次IMU数据积分，根据Pos求导 */
+    // MeasureData(1) = NewData.IMU * 
+
+    /* Acc */
+    // MeasureData(2) = NewData.IMU;
+
+    /* Time */
+    MeasureTime = NewData.RawTime; 
+    return MeasureData;
 }
 
 

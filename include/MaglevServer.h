@@ -23,6 +23,8 @@ public:
     void ServerStart(const std::vector<int>& service_ports, const std::vector<std::string>& service_names, const std::string& fusion_names); /* 系统启动 */
     void ServerEnd();   /* 系统关闭 */
     void FeedsStart();   /* 开启数据源通道 */
+    Feeds* GetCurFeeds();  /* 获取当前数据源指针 */
+
     // void FusionStart(DataFusion* pExactlyFusion);  /* 开启数据融合 */
     void ServiceStart(); /* 开启服务 */
 
