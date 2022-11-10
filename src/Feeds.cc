@@ -165,7 +165,7 @@ int Feeds::FeedsOpen()
         LenIMU=read(mFdIMU, BufferIMU, sizeof(BufferIMU));
         LenRFID=read(mFdRFID, BufferRFID, sizeof(BufferRFID));
 
-        /* TODOs: 此处设置仿真数据源 */
+        /* TODO: 此处设置仿真数据源 */
         /* 仿真Magnet数据 */
         
 
