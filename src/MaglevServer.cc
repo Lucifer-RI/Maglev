@@ -108,7 +108,7 @@ void MaglevServer::ServiceStart()
 
 void MaglevServer::ServerEnd()
 {
-    /* TODO：用于数据落地后处理等 */
+    /* 可用于数据落地后处理扩展等 */
 }
 
 

@@ -3,7 +3,7 @@
 #include <string>
 #include <time.h>
 
-/* TODO: 解析函数功能测试 */
+/* 解析函数功能测试 */
 std::pair<int,int> RenewParser(char Buf[], int Length)
 {
     std::pair<int,int> parser_result;

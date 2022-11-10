@@ -110,7 +110,7 @@ void KF::RunFunc()
         pStatusData->CurPos = mX(0);
         pStatusData->CurSpeed = mX(1);
         pStatusData->CurAcc = mX(2);
-        // pStatusData->CurTime =     ;  /* TODO:当前时间戳，数据采集时标记 */
+        pStatusData->CurTime = mMeasureTime;  /* 观测时间 */
 
         /* 驱动状态更新 */
         pStatus->UpdateStatus(pStatusData);
@@ -152,7 +152,7 @@ Eigen::VectorXd KF::GetMeasure()
     // MeasureData(2) = NewData.IMU;
 
     /* Time */
-    MeasureTime = NewData.RawTime; 
+    mMeasureTime = NewData.RawTime; 
     return MeasureData;
 }
 
