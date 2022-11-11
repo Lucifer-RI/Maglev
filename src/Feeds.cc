@@ -109,7 +109,7 @@ int Feeds::ReadData(RawData* pDataOut)
         return 0;
     }
     std::cout << "Reading Data !!! ReadIndex : " << mReadIndex << std::endl;
-    memcpy(pDtaOut, mStartAddr+mReadIndex, sizeof(RawData));
+    memcpy(pDataOut, mStartAddr+mReadIndex, sizeof(RawData));
     UpdateReadIndex();
     return 1;
 }
