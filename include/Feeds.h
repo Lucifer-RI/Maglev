@@ -44,11 +44,11 @@ public:
     
     // int DataParser(RawData* pData);  /* 用于解析一组RawData，提供给Fusion迭代计算使用 */
 
-    int MagParser(std::string& MagData);  /*  */
+    int MagParser(std::string& MagData);  /* Mag的数据解析成有效数据 */
 
-    int IMUParser(std::string& IMUData);
+    int IMUParser(std::string& IMUData);    /* IMU的数据解析成有效数据 */
 
-    int RFIDParser(std::string& RFIDData);
+    int RFIDParser(std::string& RFIDData);  /* RFID的数据解析成有效数据 */
 
     int GetReadIndex();   /* 获取共享文件中的读标志位内容 */
     void UpdateReadIndex(); /* 更新读标志位 */
@@ -58,6 +58,7 @@ public:
 
     void WriteData(RawData* pData); /* 向共享文件中写入数据 */
     int ReadData(RawData* pDataOut);   /* 从共享文件中读出最新传感器数据 */
+
 
 private:
     int FeedsStatus; /* 信号源标识，如有三路信号源则有6种状态 */

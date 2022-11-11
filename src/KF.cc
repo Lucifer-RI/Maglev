@@ -131,7 +131,7 @@ Eigen::VectorXd KF::GetMeasure()
     MeasureData.resize(MeasureSize);
     /* 获取有限观测数据 */
     /* Magnet需要转化成常规pos数据和speed数据 */
-
+    std::pair<int,int> MagData = PosGetFunc(pFeed);
     /* Pos */
     if(NewData.RFIDFlag == 1)
     {
@@ -139,17 +139,16 @@ Eigen::VectorXd KF::GetMeasure()
     }
     else
     {
-        /* MagToPos */
-        // MagToPos(Magnet), 由磁场传感器转换到Pos信息
-        // MeasureData(0) = MagToPos(NewData.Magnet);
+        MeasureData(0) = MagData.first;
     }
 
     /* Speed */
     /* 存在多种计算方式，更据前一次IMU数据积分，根据Pos求导 */
+    /* 通过Magnet历史数据来获取速度 */
     // MeasureData(1) = NewData.IMU * 
-
+    MeasureData(1) = MagData.second;
     /* Acc */
-    // MeasureData(2) = NewData.IMU;
+    MeasureData(2) = NewData.IMU;
 
     /* Time */
     mMeasureTime = NewData.RawTime; 

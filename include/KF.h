@@ -42,6 +42,10 @@ public:
     /* 更新误差协方差 */
     void UpdateCov();
 
+    /* 由原始数据获取位置速度信息 */
+    /* 返回值的first为 pos， second 为 speed */
+    std::pair<int,int> PosGetFunc(Feeds* pfeed);   
+
 private:
     /* Runfunc中需要用到的迭代变量 */
     Eigen::VectorXd mX;  /* 输出状态值，以及预测阶段的估计值， n行 */
