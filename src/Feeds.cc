@@ -370,19 +370,73 @@ std::pair<int,int> Feeds::RenewParser(char Buf[], int Length)
 /* Magnet传感器数据解析 */
 int Feeds::MagParser(std::string& MagData)
 {
-
+    int MagnetValue = 0;
+    bool Valid = true;
+    for (size_t i = 1; i < MagData.size()-1; ++i)
+    {
+        if(isdigit(MagData[i]) == 0)
+        {
+            Valid = false;
+            return -1;
+        }
+        else
+        {
+            MagnetValue = MagnetValue * 10 + (MagData[i] - '0') ;
+        }
+    }
+    if(Valid)
+    {
+        return MagnetValue;
+    }
+    return -1;
 }
 
 
 /* IMU传感器数据解析 */
 int Feeds::IMUParser(std::string& IMUData)
 {
-
+    int IMUValue = 0;
+    bool Valid = true;
+    for (size_t i = 1; i < IMUData.size()-1; ++i)
+    {
+        if(isdigit(IMUData[i]) == 0)
+        {
+            Valid = false;
+            return -1;
+        }
+        else
+        {
+            IMUValue = IMUValue * 10 + (IMUData[i] - '0') ;
+        }
+    }
+    if(Valid)
+    {
+        return IMUValue;
+    }
+    return -1;
 }
 
 
 /* RFID传感器数据解析 */
 int Feeds::RFIDParser(std::string& RFIDData)
 {
-
+    int RFIDValue = 0;
+    bool Valid = true;
+    for (size_t i = 1; i < RFIDData.size()-1; ++i)
+    {
+        if(isdigit(RFIDData[i]) == 0)
+        {
+            Valid = false;
+            return -1;
+        }
+        else
+        {
+            RFIDValue = RFIDValue * 10 + (RFIDData[i] - '0') ;
+        }
+    }
+    if(Valid)
+    {
+        return RFIDValue;
+    }
+    return -1;
 }

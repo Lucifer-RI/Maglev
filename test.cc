@@ -3,6 +3,28 @@
 #include <string>
 #include <time.h>
 
+int MagParser(std::string &MagData)
+{ 
+    int MagnetValue=0;
+    bool Valid= true;
+    for (size_t i = 1; i < MagData.size()-1; i++)
+    {
+        if(isdigit(MagData[i])==0)
+        {
+            Valid = false;
+            return -1;
+        }
+        else
+        {
+            MagnetValue = MagnetValue * 10 + MagData[i] - '0' ;
+        }
+    }
+    if(Valid)
+    {
+        return MagnetValue;
+    }
+    return -1;
+}
 
 /* 解析函数功能测试 */
 std::pair<int,int> RenewParser(char Buf[], int Length)
