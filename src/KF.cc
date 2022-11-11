@@ -119,7 +119,14 @@ void KF::RunFunc()
 }
 
 
-/* TODO: GetMeasure实现多通道传感器观测值获取*/ 
+/* TODO:从Magnet相关历史数据（离散信号值）计算峰值点，从而获取Pos以及speed信息 */
+std::pair<int,int> KF::PosGetFunc(Feeds* pfeed)
+{
+
+}
+
+
+/* GetMeasure实现多通道传感器观测值获取*/ 
 Eigen::VectorXd KF::GetMeasure()
 {
     /* 静态构造原始数据结构体 */
@@ -141,7 +148,7 @@ Eigen::VectorXd KF::GetMeasure()
     {
         MeasureData(0) = MagData.first;
     }
-
+    
     /* Speed */
     /* 存在多种计算方式，更据前一次IMU数据积分，根据Pos求导 */
     /* 通过Magnet历史数据来获取速度 */
@@ -149,7 +156,7 @@ Eigen::VectorXd KF::GetMeasure()
     MeasureData(1) = MagData.second;
     /* Acc */
     MeasureData(2) = NewData.IMU;
-
+    
     /* Time */
     mMeasureTime = NewData.RawTime; 
     return MeasureData;
