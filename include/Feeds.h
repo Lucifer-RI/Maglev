@@ -27,6 +27,8 @@ struct RawData {
     int RFIDpos;    /* RFID传感器的定位观测值 */
     int RFIDFlag;   /* RFID传感器通道接受数据标识 */
     long long RawTime;    /* 记录每一次的数据采集驱动时间 */
+    int Pos; /* Position   */
+    int Speed; /* Speed */
 
 };
 
@@ -58,7 +60,8 @@ public:
 
     void WriteData(RawData* pData); /* 向共享文件中写入数据 */
     int ReadData(RawData* pDataOut);   /* 从共享文件中读出最新传感器数据 */
-
+    
+    void* mAddr; /* 共享文件初始地址 */
 
 private:
     int FeedsStatus; /* 信号源标识，如有三路信号源则有6种状态 */
@@ -70,7 +73,7 @@ private:
     int mFdRFID;
     // 用落地到mmap的方式去进行IPC，开启一个足量空间存储RawData
     // 存储内存前用两个读写标志去标记下标
-    void* mAddr; /* 共享文件初始地址 */
+    
     RawData* mStartAddr;  /* RawData数据初始地址 */
     int mFdFile;  /* 用于存放共享文件的文件描述符 */
     int mWriteIndex;  

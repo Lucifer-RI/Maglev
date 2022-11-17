@@ -2,6 +2,105 @@
 #include <unistd.h>
 #include <string>
 #include <time.h>
+#include <vector>  
+#include <unordered_map>
+#include <cmath> 
+
+using namespace std;  
+#define PI 3.1415926
+float sinData[1024] = {0};
+
+std::pair<int,int> findPeaks(float *num,int count)  
+{   
+    // 峰值间距（磁轨长度）
+    uint16_t distance = 7000000; 
+    std::vector<int> signal(2,0);
+    uint16_t flag;
+    // 
+    vector<int> sign;  
+    for(int i = 1; i < count; i++)  
+    {  
+        float diff = num[i] - num[i-1];
+        //cout<<diff;  
+        if(diff>0)  
+        {  
+            if(!flag )
+            {
+                signal[1]++;
+            }
+            sign.push_back(1);  
+        }  
+        else if(diff<0)  
+        { 
+            if(!flag )
+            {
+                signal[0]++;
+            } 
+            sign.push_back(-1);  
+        }  
+        else  
+        {  
+            sign.push_back(0);  
+        }
+        if(signal[0] > 0 && signal[1] > 0 ) 
+        {
+            flag = 1;
+        }
+    } 
+
+    if(flag == 0)
+    {
+        return {-1,-1};
+    }
+
+    std::pair<int,int> ans;
+
+    vector<int> indMax;  
+    vector<int> indMin;  
+    
+
+
+    for(int j = 1; j < sign.size(); j++)  
+    {   
+        int diff = sign[j]-sign[j-1]; 
+        if(diff > 0)  
+        { 
+            indMax.push_back(j);
+        }  
+        else if(diff < 0)  
+        {  
+            indMin.push_back(j);  
+        }  
+    }
+      
+    /* TODO: 加上第一个波峰所在采样数据的位置信息，以及波峰波谷计算的相互验证 */
+    int posMax = indMax.size()*distance;
+    int posMin = indMin.size()*distance;
+    int posLast = indMax[0];
+    ans.first = compare(posMax, posMin, posLast);
+
+
+    for(int m = 2;m<indMax.size();m++)     
+    {   
+        ans.second = (distance / (indMax[m]-indMax[m-2])) * 2;
+    }  
+}  
+
+
+void get_sin_tab( unsigned int point)
+{
+    int i = 0;
+    float hd = 0.0;         //弧度
+    float A = 1.0;        //峰值
+    float tem = 0;
+    for( i = 0; i < point; i++ )
+    {
+        tem = A*sin(2*PI*i/16);
+     
+        sinData[i] = tem;
+    }
+}
+ 
 
 int MagParser(std::string &MagData)
 { 
@@ -25,6 +124,8 @@ int MagParser(std::string &MagData)
     }
     return -1;
 }
+
+
 
 /* 解析函数功能测试 */
 std::pair<int,int> RenewParser(char Buf[], int Length)
@@ -148,8 +249,14 @@ int main()
     //     usleep(1000000);
     // }
     
-    char buf[100] = "{12}12314142(325)346{344}";
-    std::cout << sizeof(buf) << std::endl;
-    RenewParser(buf, sizeof(buf));
-    return 0;
+    // char buf[100] = "{12}12314142(325)346{344}";
+    // std::cout << sizeof(buf) << std::endl;
+    // RenewParser(buf, sizeof(buf));
+
+    get_sin_tab(1024);
+    //for(int i=0;i<1024;i++)
+    //{cout<<sinData[i]<<endl;}
+    findPeaks(sinData,1024);  
+
+    return 0;  
 }

@@ -41,10 +41,12 @@ public:
     void UpdateState(Eigen::VectorXd& z);
     /* 更新误差协方差 */
     void UpdateCov();
+    /* Pos的可性度函数 */
+    int PosCompare(int,int,int);
 
     /* 由原始数据获取位置速度信息 */
     /* 返回值的first为 pos， second 为 speed */
-    std::pair<int,int> PosGetFunc(Feeds* pfeed);   
+    std::pair<int,int> PosGetFunc(Feeds* pfeed, int Length);   
 
 private:
     /* Runfunc中需要用到的迭代变量 */
@@ -63,6 +65,7 @@ private:
     SystemStatus* pStatus;   /* 系统状态类的指针，指向唯一实例化的SystemStatus对象 */
 
     Feeds* pFeed;     /* 系统数据源类的指针，用于获取观测数据 */
+    int MeasureLength;     /* 用于查找峰值的离散信号长度 */
 
     int StatusSize;  /* 状态向量x的长度 */
     int MeasureSize; /* 观测向量z的长度 */
