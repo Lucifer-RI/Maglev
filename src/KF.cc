@@ -122,20 +122,24 @@ void KF::RunFunc()
 
 /* 从Magnet相关历史数据（离散信号值）计算峰值点，从而获取Pos以及speed信息 */
 /* TODO : 待验算证明 */
-std::pair<int,int> KF::PosGetFunc(Feeds* pfeed, int Length)
+void KF::PosGetFunc(Feeds* pfeed, int Length, std::pair<int,int>& res, int& confident_flag)
 {
     // 峰值间距（磁轨长度）
     uint16_t distance = 7000000; /* 70cm的理想峰值间距 */
     std::vector<int> signal(2,0);
     uint16_t flag;
-    // 
-    std::vector<int> sign(Length); 
+    /*   用于纪录变化信息的数组，
+    其中数组中元素为1则说明当前点相较前一元素为强度升高
+    数组中元素为-1则说明当前点相较前一元素为强度降低
+    */
+    std::vector<int> sign; 
 
-    std::pair<int,int> ans;
     std::vector<int> indMax;  
     std::vector<int> indMin;  
-
-    RawData* StartPos = static_cast<RawData*>(pFeed->mAddr + 16);
+    /* 获取读标志位 */
+    uint16_t HasReadIndex = pFeed->GetReadIndex();
+    /* 获取检测数据队列的队首地址 */
+    RawData* StartPos = static_cast<RawData*>(pFeed->mAddr + 16) + (HasReadIndex - Length + 1);
     
     std::vector<int> indexVec;
 
@@ -146,6 +150,7 @@ std::pair<int,int> KF::PosGetFunc(Feeds* pfeed, int Length)
         {
             continue;
         }
+        
         /* 将有效数据下标纪录在数组中 */
         indexVec.emplace_back(i);
         uint16_t diff = (StartPos+i)->Magnet - (StartPos+i-1)->Magnet;  
@@ -177,7 +182,8 @@ std::pair<int,int> KF::PosGetFunc(Feeds* pfeed, int Length)
 
     if(flag == 0)
     {
-        return {-1,-1};
+        confident_flag = 0;
+        return;
     }
 
     for(int j = 1; j < sign.size(); j++)  
@@ -185,34 +191,38 @@ std::pair<int,int> KF::PosGetFunc(Feeds* pfeed, int Length)
         int diff = sign[j]-sign[j-1]; 
         if(diff > 0)  
         { 
-            indMax.push_back(indexVec[j]);
+            indMax.emplace_back(indexVec[j]);
         }  
         else if(diff < 0)  
         {  
-            indMin.push_back(indexVec[j]);  
+            indMin.emplace_back(indexVec[j]);  
         }  
     }
       
     /*  加上第一个波峰所在采样数据的位置信息，以及波峰波谷计算的相互验证 */
     int MaxLen = indMax.size();
     int MinLen = indMin.size();
-    int posMax = distance + (StartPos+indMax[MaxLen - 2])->Pos;
-    int posMin = distance + (StartPos+indMin[MinLen - 2])->Pos;
-    int posLast = (StartPos + indMax[MaxLen - 2])->Pos + (StartPos+indMax[MaxLen - 2])->Speed * ((StartPos+indMax[MaxLen - 2])->RawTime - (StartPos+indMax[MaxLen - 1])->RawTime);
-    ans.first = PosCompare(posMax, posMin, posLast);
 
-    (StartPos + indMax.back())->Pos = ans.first;
+    /* 上一个波峰位置信息 */
+    int posLast = (StartPos+indMax[MaxLen - 2])->Pos;
 
-    
+    int posMax = distance + posLast;
+    int posMin = distance + posLast;
+    /* 利用上一个波峰的位置信息以及速度信息计算当前最新波峰的位置信息，用作可靠性比较 */
+    posLast += (StartPos+indMax[MaxLen - 2])->Speed * ((StartPos+indMax[MaxLen - 1])->RawTime - (StartPos+indMax[MaxLen - 2])->RawTime);
+    res.first = PosCompare(posMax, posMin, posLast);
+
+    /* 将位置信息计算值赋给结构体存放在mmap中 */
+    (StartPos + indMax.back())->Pos = res.first;
+
     /* TODO: 速度验证方案 */
     for(int m = 2; m<indMax.size(); m++)     
     {   
-        ans.second = (distance / (indMax[m]-indMax[m-2])) * 2;
+        res.second = (distance / (indMax[m]-indMax[m-2])) * 2;
     }
-
-    (StartPos + indMax.back())->Speed = ans.second;
-
-    return ans;
+    /* 将速度信息计算值赋给结构体存放在mmap中 */
+    (StartPos + indMax.back())->Speed = res.second;
+    return;
 }
 
 
@@ -247,7 +257,14 @@ Eigen::VectorXd KF::GetMeasure()
     MeasureData.resize(MeasureSize);
     /* 获取有限观测数据 */
     /* Magnet需要转化成常规pos数据和speed数据 */
-    std::pair<int,int> MagData = PosGetFunc(pFeed, MeasureLength);
+    std::pair<int,int> MagData;
+    int Confident_flag = 1;
+    PosGetFunc(pFeed, MeasureLength, MagData, Confident_flag);
+    /* 若MagData为{-1，-1}， 则说明为无效数据段，则没有新的有效pos数据和speed数据 */
+    if(Confident_flag == 0)
+    {
+        MagData.first +=  
+    }
     /* Pos */
     if(NewData.RFIDFlag == 1)
     {

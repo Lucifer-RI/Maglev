@@ -45,8 +45,8 @@ public:
     int PosCompare(int,int,int);
 
     /* 由原始数据获取位置速度信息 */
-    /* 返回值的first为 pos， second 为 speed */
-    std::pair<int,int> PosGetFunc(Feeds* pfeed, int Length);   
+    /* res参数的first为 pos， second 为 speed */
+    void PosGetFunc(Feeds* pfeed, int Length, std::pair<int,int>& res, int& confident_flag);   
 
 private:
     /* Runfunc中需要用到的迭代变量 */
