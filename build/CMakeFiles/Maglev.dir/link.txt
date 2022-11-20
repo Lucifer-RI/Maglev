@@ -1,0 +1,1 @@
+/usr/bin/c++   -g   CMakeFiles/Maglev.dir/src/Feeds.cc.o CMakeFiles/Maglev.dir/src/ServiceClient.cc.o CMakeFiles/Maglev.dir/src/Service.cc.o CMakeFiles/Maglev.dir/src/SystemStatus.cc.o CMakeFiles/Maglev.dir/src/main.cc.o CMakeFiles/Maglev.dir/src/MaglevServer.cc.o CMakeFiles/Maglev.dir/src/KF.cc.o  -o Maglev -rdynamic -lpthread 
