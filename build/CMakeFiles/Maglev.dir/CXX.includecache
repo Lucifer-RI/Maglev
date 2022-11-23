@@ -19,6 +19,8 @@ thread
 -
 unistd.h
 -
+glog/logging.h
+-
 
 ../include/Eigen/Cholesky
 Core
@@ -1049,6 +1051,8 @@ sys/types.h
 -
 sys/stat.h
 -
+glog/logging.h
+-
 unistd.h
 -
 fcntl.h
@@ -1073,6 +1077,8 @@ stdio.h
 -
 Eigen/Dense
 -
+glog/logging.h
+-
 Feeds.h
 ../include/Feeds.h
 DataFusion.h
@@ -1092,6 +1098,8 @@ thread
 climits
 -
 stdlib.h
+-
+glog/logging.h
 -
 Feeds.h
 ../include/Feeds.h
@@ -1153,6 +1161,8 @@ sys/types.h
 -
 sys/socket.h
 -
+glog/logging.h
+-
 
 ../include/SystemStatus.h
 iostream
@@ -1170,6 +1180,8 @@ string.h
 sys/mman.h
 -
 sys/types.h
+-
+glog/logging.h
 -
 ServiceClient.h
 ../include/ServiceClient.h
