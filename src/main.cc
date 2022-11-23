@@ -23,7 +23,7 @@ int main()
    DataFusion* pFusion = new KF(3, 3, 0, 3, "KF", pServer->GetCurFeeds());
    /* 主线程用于融合迭代计算 */
    pFusion->RunFunc();
-
+   
    std::cout << "Server Close !" << std::endl;
 
    return 0;

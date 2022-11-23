@@ -8,6 +8,7 @@
 #include <string>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <glog/logging.h>
 
 
 /* 系统状态数据结构 */

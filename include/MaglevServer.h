@@ -7,6 +7,7 @@
 #include <thread>
 #include <climits>
 #include <stdlib.h>
+#include <glog/logging.h>
 #include "Feeds.h"
 #include "DataFusion.h"
 #include "KF.h"

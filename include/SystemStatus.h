@@ -10,6 +10,7 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/types.h>
+#include <glog/logging.h> 
 #include "ServiceClient.h"
 
 
@@ -25,18 +26,10 @@ public:
     void StatusMonitor();  /* TODO:用于无客户端时，开发者监控系统状态 */
 
     void NotifyClients();  /* 遍历客户订阅列表，调用每个抽象客户类的publish函数进行推送 */
-
     
-    static SystemStatus* GetInstance() 
-    /* SystemStatus设置为单例模式，使用GetInstance（）获取实例 */
-    {
-        if(StatusInstance == nullptr)
-        {
-            StatusInstance = new SystemStatus(3);
-        }
-        return StatusInstance;
-    }
+    static SystemStatus* GetInstance(); /* SystemStatus设置为单例模式，使用GetInstance（）获取实例 */
 
+    static void DeleteInstance();  /* 释放单例 */
 
 private:
     SystemStatus(int status_num = 3);  /* 构造函数 */

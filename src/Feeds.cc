@@ -5,21 +5,24 @@
 #define BUFFER_LEN 512 
 #define MMAP_MAX_LEN 2048
 #define CHR_DEV_MAG "/dev/ttyACM0"
-#define CHR_DEV_IMU "/dev/ttyACM1"
+#define CHR_DEV_IMU "/dev/ttyUSB0"
 #define CHR_DEV_RFID "/dev/ttyACM2"
-#define MMAP_FILE_PATH "/home/jiang/data"
+#define MMAP_FILE_PATH "/home/ysfyuan/maglev_mmap_data"
 
 /* 构造函数 */
 Feeds::Feeds(long long cur_time, int feeds_status)
     : CurTime(cur_time), FeedsStatus(feeds_status)
 {
     /* 开启用于通信的共享文件 */
-    mFdFile = open(MMAP_FILE_PATH, O_RDWR|O_CREAT);
-    if(mFdFile<0)
+    mFdFile = open(MMAP_FILE_PATH, O_RDWR|O_CREAT, 0777);
+    // std::cout << " MMap FD :  " << mFdFile << std::endl;
+    if(mFdFile < 0)
     {
-        std::cout<<"open file failed!"<<MMAP_FILE_PATH<<std::endl;
+        std::cout<<"open file failed! Path : "<<MMAP_FILE_PATH<<std::endl;
         exit(1);
     }
+    /* Mmap文件地址使用前应设置虚拟文件对应大小 */
+    ftruncate(mFdFile, MMAP_MAX_LEN);
     /* 共享文件映射到硬盘中，获取文件内容首地址MmapAddr */
     mAddr = mmap(nullptr, MMAP_MAX_LEN, PROT_READ|PROT_WRITE, MAP_SHARED, mFdFile, 0);
     if(mAddr == NULL)
@@ -31,6 +34,7 @@ Feeds::Feeds(long long cur_time, int feeds_status)
     {
         /* 共享文件复位 */
         std::cout << "New Mmap File !" << std::endl;
+
         memset(mAddr, 0, MMAP_MAX_LEN);
     }
     std::cout << "Mmap_addr : " << mAddr << std::endl;
@@ -124,10 +128,11 @@ int Feeds::FeedsOpen()
     char BufferRFID[BUFFER_LEN];
 
     /* 开启驱动文件 */
-    mFdMag = open(CHR_DEV_MAG,O_RDWR | O_NOCTTY);
+    mFdMag = open(CHR_DEV_MAG, O_RDWR | O_NOCTTY, 0777);
+    std::cout << mFdMag << std::endl;
     if(mFdMag < 0)
     {
-        std::cout<<"open device magnet failed!"<<CHR_DEV_MAG<<std::endl;
+        std::cout<<"open device magnet failed! "<<CHR_DEV_MAG<<std::endl;
         return -1;
     }
     std::cout<<"FdMag is :"<<mFdMag<<std::endl;

@@ -68,3 +68,11 @@ void ServiceClient::Publish(StatusData* new_status_data)
 
 }
 
+
+void ServiceClient::Disconnect()
+{
+    std::cout << "Disconnect  ServiceClient , Release FD :  " << ListenFd << std::endl;
+    // ~ServiceClient();
+}
+
+

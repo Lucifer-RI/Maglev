@@ -122,10 +122,10 @@ void KF::RunFunc()
 
 /* 从Magnet相关历史数据（离散信号值）计算峰值点，从而获取Pos以及speed信息 */
 /* TODO : 待验算证明 */
-void KF::PosGetFunc(Feeds* pfeed, int Length, std::pair<int,int>& res, int& confident_flag)
+void KF::PosGetFunc(Feeds* pfeed, int Length, std::pair<uint64_t,int>& res, int& confident_flag)
 {
     // 峰值间距（磁轨长度）
-    uint16_t distance = 7000000; /* 70cm的理想峰值间距 */
+    uint64_t distance = 7000000; /* 70cm的理想峰值间距 */
     std::vector<int> signal(2,0);
     uint16_t flag;
     /*   用于纪录变化信息的数组，
@@ -257,13 +257,14 @@ Eigen::VectorXd KF::GetMeasure()
     MeasureData.resize(MeasureSize);
     /* 获取有限观测数据 */
     /* Magnet需要转化成常规pos数据和speed数据 */
-    std::pair<int,int> MagData;
+    /* 其中pos使用uint64_t, 来防止溢出 */
+    std::pair<uint64_t, int> MagData;
     int Confident_flag = 1;
     PosGetFunc(pFeed, MeasureLength, MagData, Confident_flag);
     /* 若MagData为{-1，-1}， 则说明为无效数据段，则没有新的有效pos数据和speed数据 */
     if(Confident_flag == 0)
     {
-        MagData.first +=  
+        std::cout << "Got no New Pos & Speed, Use last Data !!!" << std::endl;
     }
     /* Pos */
     if(NewData.RFIDFlag == 1)

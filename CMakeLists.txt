@@ -8,7 +8,10 @@ PROJECT(Maglev)
 SET(CMAKE_BUILD_TYPE DEBUG)
 
 #指定C++编译版本
-SET(CMAKE_CXX_STANDARD 17)
+SET(CMAKE_CXX_STANDARD 11)
+
+# 指定部分编译选项
+# SET(CMAKE_CXX_FLAGS " -lpthread")
 
 # 标记include文件夹为头文件夹路径
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/include)
@@ -21,5 +24,6 @@ ADD_EXECUTABLE(${PROJECT_NAME} ${SRC})
 
 #链接库文件
 target_link_libraries(${PROJECT_NAME} 
-                        ${PROJECT_SOURCE_DIR}/so
+                        # ${PROJECT_SOURCE_DIR}/so
+                        -lpthread
                     )      

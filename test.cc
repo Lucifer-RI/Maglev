@@ -1,6 +1,14 @@
 #include <iostream>
 #include <unistd.h>
 #include <string>
+#include <stdlib.h>
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <glog/logging.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <memory.h>
 #include <time.h>
 #include <vector>  
 #include <unordered_map>
@@ -77,7 +85,7 @@ std::pair<int,int> findPeaks(float *num,int count)
     int posMax = indMax.size()*distance;
     int posMin = indMin.size()*distance;
     int posLast = indMax[0];
-    ans.first = compare(posMax, posMin, posLast);
+    // ans.first = compare(posMax, posMin, posLast);
 
 
     for(int m = 2;m<indMax.size();m++)     
@@ -232,6 +240,8 @@ std::pair<int,int> RenewParser(char Buf[], int Length)
     return  parser_result;
 }
 
+#define CHR_DEV_MAG "/dev/ttyACM0"
+
 
 int main()
 {
@@ -253,10 +263,12 @@ int main()
     // std::cout << sizeof(buf) << std::endl;
     // RenewParser(buf, sizeof(buf));
 
-    get_sin_tab(1024);
-    //for(int i=0;i<1024;i++)
-    //{cout<<sinData[i]<<endl;}
-    findPeaks(sinData,1024);  
+    // get_sin_tab(1024);
+    // //for(int i=0;i<1024;i++)
+    // //{cout<<sinData[i]<<endl;}
+    // findPeaks(sinData,1024);  
 
+    int mMag = open(CHR_DEV_MAG, O_RDWR|O_NOCTTY);
+    std::cout << mMag << std::endl;
     return 0;  
 }

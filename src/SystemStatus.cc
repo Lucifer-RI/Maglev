@@ -2,8 +2,24 @@
 
 #include "SystemStatus.h"
 
+
+/* 代码运行即创建单例 */
+SystemStatus* SystemStatus::StatusInstance = new (std::nothrow) SystemStatus(3);
+
+/* 获取单例 */
+SystemStatus* SystemStatus::GetInstance()
+{
+    if(StatusInstance == nullptr)
+    {
+        StatusInstance = new (std::nothrow) SystemStatus(3);
+    }
+    return StatusInstance;
+}
+
+
 /* 构造函数 */
-SystemStatus::SystemStatus(int status_num = 3)
+/* 此处注意： 默认参数只需要在头文件中定义一次，源文件中声明即可，否则触发重复定义 */
+SystemStatus::SystemStatus(int status_num)
     :  StatusNum(status_num)
 {
     /* 清空缓存系统状态数据 */
