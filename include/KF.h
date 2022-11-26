@@ -72,5 +72,7 @@ private:
     int MeasureSize; /* 观测向量z的长度 */
     int Usize;       /* 控制矩阵的行数，暂不考虑 */
 
+    int ValidMeasureFlag;  /* 观测数据为有效值的标志位 */
+
     long long mMeasureTime;   /* 获取的数据时间戳 */
 };

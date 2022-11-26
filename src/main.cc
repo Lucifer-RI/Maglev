@@ -19,6 +19,7 @@ int main()
    MaglevServer *pServer = new MaglevServer(3, 1, 0, 1);
    /* 开启feed和service，feed和service都应该在单独线程中运行 */
    pServer->ServerStart({1024}, {"SpinPush"}, "KF");
+   sleep(2);
    /* 初始化数据融合器 */
    DataFusion* pFusion = new KF(3, 3, 0, 3, "KF", pServer->GetCurFeeds());
    /* 主线程用于融合迭代计算 */

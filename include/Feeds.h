@@ -39,8 +39,10 @@ public:
     Feeds(long long cur_time, int feeds_status);    /* 数据源Feeds对象的构造函数声明 */
     ~Feeds(); /* 析构函数 */
 
-    int FeedsOpen();  /* 数据通道开启函数，开始接收数据，设置返回值为int类型用于判断数据中断原因 */
+    int FeedsOpen();  /* 数据通道线程开启函数 */
     
+    void FeedsLoop();   /* 开始接收数据 */
+
     std::pair<int,int> RenewParser(char buf[], int Length);   /* 串口数据协议解析 */
     /*  */
     /*传感器数据更新，判断传感器数据类型，返回对应传感器数值*/

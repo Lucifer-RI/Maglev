@@ -65,6 +65,7 @@ void MaglevServer::ServerStart(const std::vector<int>& ServicesPort, const std::
     pSysStatus = SystemStatus::GetInstance();
 
     /* 打印系统初始状态 */
+    std::cout << "Intial Status : " << std::endl;
     pSysStatus->StatusMonitor();
     
     /* 开启服务 */

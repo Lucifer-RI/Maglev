@@ -10,6 +10,7 @@ KF::KF(int status_size, int measure_size, int u_size, int feeds_num, std::string
 {
     pStatus = SystemStatus::GetInstance();  /* 将系统状态改成单例模式，在此处调用GetInstance */
     FusionStatus = 1;  /* 融合状态标志 */
+    ValidMeasureFlag = 0;  /* 初始化状态为0， 有效态为1， 无效态为-1 */
     pFeed = pfeeds;
     MeasureLength = 100;
 }
@@ -99,6 +100,10 @@ void KF::RunFunc()
     {
         /* 多通道传感器观测值获取 */
         z = GetMeasure();
+        if(ValidMeasureFlag == -1)
+        {
+            continue;
+        }
         /* 根据上次估值预测 */
         PredictState();
         /* 估算COV */
@@ -251,15 +256,25 @@ Eigen::VectorXd KF::GetMeasure()
     /* 静态构造原始数据结构体 */
     RawData NewData;
     memset(&NewData, 0, sizeof(RawData));
-    int ret = pFeed->ReadData(&NewData);
+    
     /* ret 可用于调节滤波系统的数据获取筛选 */
     Eigen::VectorXd MeasureData;
     MeasureData.resize(MeasureSize);
+
+    int ret = pFeed->ReadData(&NewData);
+    if(ret == -1)
+    {
+        /* 暂时还无采集数据 */
+        ValidMeasureFlag = -1;
+        return MeasureData;
+    }
+    /* 返回值不为-1，则为有效观测原始数据值 */
+    ValidMeasureFlag = 1;
     /* 获取有限观测数据 */
     /* Magnet需要转化成常规pos数据和speed数据 */
     /* 其中pos使用uint64_t, 来防止溢出 */
     std::pair<uint64_t, int> MagData;
-    int Confident_flag = 1;
+    int Confident_flag = 1;  /* 用于标志本次观测生成数据是否为有效值 */
     PosGetFunc(pFeed, MeasureLength, MagData, Confident_flag);
     /* 若MagData为{-1，-1}， 则说明为无效数据段，则没有新的有效pos数据和speed数据 */
     if(Confident_flag == 0)

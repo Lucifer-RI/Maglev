@@ -106,10 +106,19 @@ int Feeds::ReadData(RawData* pDataOut)
 {
     if(mReadIndex >= mWriteIndex)
     {
-        std::cout << "Wait Data from Feeds !!! Got Lastest Data !!!" << std::endl;
-        /* 此时情况为新数据都已经读取完毕，没有可用的新数据，则用最近一次的数据进行迭代 */
-        /* 此处获取的数据为写标志位前一位，即最新数据 */
-        memcpy(pDataOut, mStartAddr+mWriteIndex-1, sizeof(RawData));
+        if(mWriteIndex == 0)
+        {
+            /* 此时为系统初始化，还没有任何采集数据 */
+            std::cout << "Get nothing from Feeds !!!, Wait a moment..." << std::endl;
+            return -1;
+        }
+        else
+        {
+            std::cout << "Wait Data from Feeds !!! Got Lastest Data !!!" << std::endl;
+            /* 此时情况为新数据都已经读取完毕，没有可用的新数据，则用最近一次的数据进行迭代 */
+            /* 此处获取的数据为写标志位前一位，即最新数据 */
+            memcpy(pDataOut, mStartAddr+mWriteIndex-1, sizeof(RawData));
+        }
         return 0;
     }
     std::cout << "Reading Data !!! ReadIndex : " << mReadIndex << std::endl;
@@ -119,9 +128,21 @@ int Feeds::ReadData(RawData* pDataOut)
 }
 
 
-/* 数据源启动函数 */
+/* 开启Feeds线程 */
 int Feeds::FeedsOpen()
+{
+    /* 开启线程以及导入Loop函数 */
+    std::thread feeds_thread(&Feeds::FeedsLoop, this);
+    /* 主线程继续初始化其他模块 */
+    feeds_thread.detach();
+    return 0; 
+}
+
+
+/* 数据源启动函数 */
+void Feeds::FeedsLoop()
 {   
+    std::cout << "Feeds Thread Open! " << std::endl;
     /* 三个串口数据缓冲区 */
     char BufferMagnet[BUFFER_LEN];
     char BufferIMU[BUFFER_LEN];
@@ -129,11 +150,10 @@ int Feeds::FeedsOpen()
 
     /* 开启驱动文件 */
     mFdMag = open(CHR_DEV_MAG, O_RDWR | O_NOCTTY, 0777);
-    std::cout << mFdMag << std::endl;
     if(mFdMag < 0)
     {
         std::cout<<"open device magnet failed! "<<CHR_DEV_MAG<<std::endl;
-        return -1;
+        // return -1;
     }
     std::cout<<"FdMag is :"<<mFdMag<<std::endl;
 
@@ -142,7 +162,6 @@ int Feeds::FeedsOpen()
     if(mFdIMU < 0)
     {
         std::cout<<"open device IMU failed!"<<CHR_DEV_IMU<<std::endl;
-        return -1;
     }
     std::cout<<"FdIMU is :"<<mFdIMU<<std::endl;
     
@@ -151,24 +170,37 @@ int Feeds::FeedsOpen()
     if(mFdRFID < 0)
     {
         std::cout<<"open device RFID failed!"<<CHR_DEV_IMU<<std::endl;
-        return -1;
     }
     std::cout<<"FdRFID is :"<<mFdRFID<<std::endl;    
 
     /* 轮询的机制接收多个异步串口的缓冲区数据 */
     RawData Renew;  /* 临时结构体，用于数据刷新纪录 */
     memset(&Renew,0,sizeof(Renew)); 
-    int LenMag, LenIMU, LenRFID;
+    int LenMag = 0;
+    int LenIMU = 0;
+    int LenRFID = 0;
 
     /* 采集时间 */
     time_t raw_time;
     
+    /* 有效数据标志位 */
+    int valid_flag = 0;
+
     while(1)
     {
         /* 此处的buffer数据不一定与名称对应，可以默认为三个相同缓冲区 */
-        LenMag=read(mFdMag, BufferMagnet, sizeof(BufferMagnet));
-        LenIMU=read(mFdIMU, BufferIMU, sizeof(BufferIMU));
-        LenRFID=read(mFdRFID, BufferRFID, sizeof(BufferRFID));
+        if(mFdMag != -1)
+        {
+            LenMag=read(mFdMag, BufferMagnet, sizeof(BufferMagnet));
+        }
+        if(mFdIMU != -1)
+        {
+            LenIMU=read(mFdIMU, BufferIMU, sizeof(BufferIMU));
+        }
+        if(mFdRFID != -1)
+        {
+            LenRFID=read(mFdRFID, BufferRFID, sizeof(BufferRFID));
+        }
 
         /* TODO: 此处设置仿真数据源 */
         /* 仿真Magnet数据 */
@@ -179,12 +211,19 @@ int Feeds::FeedsOpen()
 
         /* 用于存放原始数据协议解析值 */
         std::pair<int,int> ret_parser;
+        /* 有效标志位先置0 */
+        valid_flag = 0;
 
         while(LenMag > 0 || LenIMU > 0 || LenRFID > 0)
         {   
             if(LenMag > 0)
             {
                 ret_parser = RenewParser(BufferMagnet, LenMag);
+                /* 如果不为无效数据，则置为有效标志位为1 */
+                if(ret_parser.first != -100)
+                {
+                    valid_flag = 1;
+                }
                 switch(ret_parser.first)
                 {
                     case 1:
@@ -207,6 +246,11 @@ int Feeds::FeedsOpen()
             if(LenIMU > 0)
             {
                 ret_parser = RenewParser(BufferIMU, LenIMU);
+                /* 如果不为无效数据，则置为有效标志位为1 */
+                if(ret_parser.first != -100)
+                {
+                    valid_flag = 1;
+                }
                 switch(ret_parser.first)
                 {
                     case 1:
@@ -229,6 +273,11 @@ int Feeds::FeedsOpen()
             if(LenRFID > 0)
             {
                 ret_parser = RenewParser(BufferRFID, LenRFID);
+                /* 如果不为无效数据，则置为有效标志位为1 */
+                if(ret_parser.first != -100)
+                {
+                    valid_flag = 1;
+                }
                 switch(ret_parser.first)
                 {
                     case 1:
@@ -248,7 +297,12 @@ int Feeds::FeedsOpen()
                 }
             }
         }
-        
+        /* 有效标志位为0，则此次采集数据无效，则不写入mmap中 */
+        if(valid_flag == 0)
+        {
+            continue;
+        }
+
         /* 完成临时结构体的更新则清空缓冲 */
         memset(BufferMagnet,0,sizeof(BufferMagnet));
         memset(BufferIMU,0,sizeof(BufferIMU));
