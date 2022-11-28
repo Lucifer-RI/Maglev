@@ -99,6 +99,7 @@ void KF::RunFunc()
     while(FusionStatus)
     {
         /* 多通道传感器观测值获取 */
+        usleep(200000);
         z = GetMeasure();
         if(ValidMeasureFlag == -1)
         {
