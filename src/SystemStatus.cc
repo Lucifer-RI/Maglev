@@ -109,13 +109,15 @@ void SystemStatus::UpdateStatus(StatusData* pStatus)
     /* 更新前先清空 */
     memset(&CurStatusData, 0, sizeof(CurStatusData));
     /* 指针赋值 */
-    CurStatusData = (StatusData)*pStatus;
-    /* 打印输出，用于开发人员调试 */
-    this->StatusMonitor();
+    CurStatusData = static_cast<StatusData>(*pStatus);
+
     /* 更新至客户端 */
     this->NotifyClients();
+    /* 打印输出，用于开发人员调试 */
+    this->StatusMonitor();
     return;
 }
+
 
 
 void SystemStatus::StatusMonitor()

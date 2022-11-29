@@ -2,7 +2,7 @@
 
 #include <Feeds.h>
 
-#define BUFFER_LEN 512 
+#define BUFFER_LEN 128 
 #define MMAP_MAX_LEN 2048
 #define CHR_DEV_MAG "/dev/ttyACM0"
 #define CHR_DEV_IMU "/dev/ttyUSB0"
@@ -68,6 +68,7 @@ void Feeds::UpdateReadIndex()
 {
     ++(*(static_cast<int*>(mAddr)));
     mReadIndex = *(static_cast<int*>(mAddr));
+    std::cout << "Cur ReadIndex : " << mReadIndex << std::endl;
     return;
 }
 
@@ -149,7 +150,7 @@ void Feeds::FeedsLoop()
     char BufferRFID[BUFFER_LEN];
 
     /* 开启驱动文件 */
-    mFdMag = open(CHR_DEV_MAG, O_RDWR | O_NOCTTY, 0777);
+    mFdMag = open(CHR_DEV_MAG, O_RDWR | O_NOCTTY | O_NONBLOCK , 0777);
     if(mFdMag < 0)
     {
         std::cout<<"open device magnet failed! "<<CHR_DEV_MAG<<std::endl;
@@ -158,7 +159,7 @@ void Feeds::FeedsLoop()
     std::cout<<"FdMag is :"<<mFdMag<<std::endl;
 
     /* 开启驱动文件 */
-    mFdIMU = open(CHR_DEV_IMU,O_RDWR | O_NOCTTY);
+    mFdIMU = open(CHR_DEV_IMU,O_RDWR | O_NOCTTY | O_NONBLOCK , 0777);
     if(mFdIMU < 0)
     {
         std::cout<<"open device IMU failed!"<<CHR_DEV_IMU<<std::endl;
@@ -166,10 +167,10 @@ void Feeds::FeedsLoop()
     std::cout<<"FdIMU is :"<<mFdIMU<<std::endl;
     
     /* 开启驱动文件 */
-    mFdRFID = open(CHR_DEV_RFID,O_RDWR | O_NOCTTY);
+    mFdRFID = open(CHR_DEV_RFID,O_RDWR | O_NOCTTY | O_NONBLOCK, 0777);
     if(mFdRFID < 0)
     {
-        std::cout<<"open device RFID failed!"<<CHR_DEV_IMU<<std::endl;
+        std::cout<<"open device RFID failed!"<<CHR_DEV_RFID<<std::endl;
     }
     std::cout<<"FdRFID is :"<<mFdRFID<<std::endl;    
 
@@ -192,10 +193,12 @@ void Feeds::FeedsLoop()
         if(mFdMag != -1)
         {
             LenMag=read(mFdMag, BufferMagnet, sizeof(BufferMagnet));
+            std::cout<< "Lenmag: "<< LenMag  << std::endl;
         }
         if(mFdIMU != -1)
         {
             LenIMU=read(mFdIMU, BufferIMU, sizeof(BufferIMU));
+            std::cout<< "LenIMU: "<< LenIMU  << std::endl;
         }
         if(mFdRFID != -1)
         {
@@ -205,7 +208,6 @@ void Feeds::FeedsLoop()
         /* TODO: 此处设置仿真数据源 */
         /* 仿真Magnet数据 */
         
-
         /* 可在此处限制系统采样频率,此处为0.5s一次 */
         usleep(500000);
 
@@ -215,7 +217,7 @@ void Feeds::FeedsLoop()
         valid_flag = 0;
 
         while(LenMag > 0 || LenIMU > 0 || LenRFID > 0)
-        {   
+        {
             if(LenMag > 0)
             {
                 ret_parser = RenewParser(BufferMagnet, LenMag);
@@ -241,6 +243,7 @@ void Feeds::FeedsLoop()
                     default: 
                         break;
                 }
+                LenMag = -1;
             }
 
             if(LenIMU > 0)
@@ -268,6 +271,7 @@ void Feeds::FeedsLoop()
                     default: 
                         break;
                 }
+                LenIMU = -1;
             }
 
             if(LenRFID > 0)
@@ -295,6 +299,7 @@ void Feeds::FeedsLoop()
                     default: 
                         break;
                 }
+                LenRFID = -1;
             }
         }
         /* 有效标志位为0，则此次采集数据无效，则不写入mmap中 */

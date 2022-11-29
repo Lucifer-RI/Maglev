@@ -12,7 +12,7 @@ KF::KF(int status_size, int measure_size, int u_size, int feeds_num, std::string
     FusionStatus = 1;  /* 融合状态标志 */
     ValidMeasureFlag = 0;  /* 初始化状态为0， 有效态为1， 无效态为-1 */
     pFeed = pfeeds;
-    MeasureLength = 100;
+    MeasureLength = 50;
 }
 
 
@@ -99,7 +99,7 @@ void KF::RunFunc()
     while(FusionStatus)
     {
         /* 多通道传感器观测值获取 */
-        usleep(200000);
+        usleep(2000000);
         z = GetMeasure();
         if(ValidMeasureFlag == -1)
         {
@@ -145,11 +145,22 @@ void KF::PosGetFunc(Feeds* pfeed, int Length, std::pair<uint64_t,int>& res, int&
     /* 获取读标志位 */
     uint16_t HasReadIndex = pFeed->GetReadIndex();
     /* 获取检测数据队列的队首地址 */
-    RawData* StartPos = static_cast<RawData*>(pFeed->mAddr + 16) + (HasReadIndex - Length + 1);
+    std::cout << "HasReadIndex : " << HasReadIndex << std::endl;
+    int RealProcessLength = 0;
+    if(HasReadIndex <= Length)
+    {
+        RealProcessLength = HasReadIndex;
+    }
+    else
+    {
+        RealProcessLength = Length;
+    }
+    
+    RawData* StartPos = static_cast<RawData*>(pFeed->mAddr + sizeof(int)*2) + (HasReadIndex - RealProcessLength + 1);
     
     std::vector<int> indexVec;
 
-    for(int i = 1; i < Length; i++)  
+    for(int i = 0; i < RealProcessLength; i++)  
     {  
         /* 取出当前最新的Length个带Magnet数据的Rawdata */
         if(!(StartPos+i)->MagnetFlag)
@@ -228,6 +239,7 @@ void KF::PosGetFunc(Feeds* pfeed, int Length, std::pair<uint64_t,int>& res, int&
     }
     /* 将速度信息计算值赋给结构体存放在mmap中 */
     (StartPos + indMax.back())->Speed = res.second;
+    std::cout << "Pos : " << res.first << " Speed : " << res.second << std::endl;
     return;
 }
 
@@ -276,6 +288,7 @@ Eigen::VectorXd KF::GetMeasure()
     /* 其中pos使用uint64_t, 来防止溢出 */
     std::pair<uint64_t, int> MagData;
     int Confident_flag = 1;  /* 用于标志本次观测生成数据是否为有效值 */
+    // std::cout << "PosGETfUNC !" << std::endl;
     PosGetFunc(pFeed, MeasureLength, MagData, Confident_flag);
     /* 若MagData为{-1，-1}， 则说明为无效数据段，则没有新的有效pos数据和speed数据 */
     if(Confident_flag == 0)
