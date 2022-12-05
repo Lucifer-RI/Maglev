@@ -17,8 +17,7 @@ struct StatusData{
     int CurAcc;
     int CurSpeed;
     int CurPos;
-    std::string CurTime;
-
+    long long CurTime;
 };
 
 

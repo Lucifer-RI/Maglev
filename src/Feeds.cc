@@ -3,7 +3,7 @@
 #include <Feeds.h>
 
 #define BUFFER_LEN 128 
-#define MMAP_MAX_LEN 2048
+#define MMAP_MAX_LEN 2048*2048
 #define CHR_DEV_MAG "/dev/ttyACM0"
 #define CHR_DEV_IMU "/dev/ttyUSB0"
 #define CHR_DEV_RFID "/dev/ttyACM2"
@@ -150,7 +150,7 @@ void Feeds::FeedsLoop()
     char BufferRFID[BUFFER_LEN];
 
     /* 开启驱动文件 */
-    mFdMag = open(CHR_DEV_MAG, O_RDWR | O_NOCTTY | O_NONBLOCK , 0777);
+    mFdMag = open(CHR_DEV_MAG, O_RDWR | O_NOCTTY | O_NONBLOCK | O_NDELAY , 0777);
     if(mFdMag < 0)
     {
         std::cout<<"open device magnet failed! "<<CHR_DEV_MAG<<std::endl;
@@ -159,7 +159,7 @@ void Feeds::FeedsLoop()
     std::cout<<"FdMag is :"<<mFdMag<<std::endl;
 
     /* 开启驱动文件 */
-    mFdIMU = open(CHR_DEV_IMU,O_RDWR | O_NOCTTY | O_NONBLOCK , 0777);
+    mFdIMU = open(CHR_DEV_IMU,O_RDWR | O_NOCTTY | O_NONBLOCK | O_NDELAY , 0777);
     if(mFdIMU < 0)
     {
         std::cout<<"open device IMU failed!"<<CHR_DEV_IMU<<std::endl;
@@ -167,7 +167,7 @@ void Feeds::FeedsLoop()
     std::cout<<"FdIMU is :"<<mFdIMU<<std::endl;
     
     /* 开启驱动文件 */
-    mFdRFID = open(CHR_DEV_RFID,O_RDWR | O_NOCTTY | O_NONBLOCK, 0777);
+    mFdRFID = open(CHR_DEV_RFID,O_RDWR | O_NOCTTY | O_NONBLOCK | O_NDELAY, 0777);
     if(mFdRFID < 0)
     {
         std::cout<<"open device RFID failed!"<<CHR_DEV_RFID<<std::endl;
@@ -194,11 +194,13 @@ void Feeds::FeedsLoop()
         {
             LenMag=read(mFdMag, BufferMagnet, sizeof(BufferMagnet));
             std::cout<< "Lenmag: "<< LenMag  << std::endl;
+            // << "  ValueMag: "<< BufferMagnet << std::endl;
         }
         if(mFdIMU != -1)
         {
             LenIMU=read(mFdIMU, BufferIMU, sizeof(BufferIMU));
             std::cout<< "LenIMU: "<< LenIMU  << std::endl;
+            // <<" ValueIMU: " << BufferIMU << std::endl;
         }
         if(mFdRFID != -1)
         {
@@ -208,8 +210,8 @@ void Feeds::FeedsLoop()
         /* TODO: 此处设置仿真数据源 */
         /* 仿真Magnet数据 */
         
-        /* 可在此处限制系统采样频率,此处为0.5s一次 */
-        usleep(500000);
+        /* 可在此处限制系统采样频率,此处为0.05s一次 */
+        usleep(200000);
 
         /* 用于存放原始数据协议解析值 */
         std::pair<int,int> ret_parser;
@@ -397,6 +399,7 @@ std::pair<int,int> Feeds::RenewParser(char Buf[], int Length)
                     real_data[i-start_index] = Buf[i];
                 }
                 parser_result.second = IMUParser(real_data);
+                // std::cout  << "IMU parser : "<< parser_result.second << std::endl;
             }
         }
         else if(Buf[end_index] == ')')
@@ -436,7 +439,14 @@ int Feeds::MagParser(std::string& MagData)
 {
     int MagnetValue = 0;
     bool Valid = true;
-    for (size_t i = 1; i < MagData.size()-1; ++i)
+    int flag = 1;
+    int start = 1;
+    if(MagData[1] == '-')
+    {
+        flag = -1;
+        start = 2;
+    }
+    for (size_t i = start; i < MagData.size()-1; ++i)
     {
         if(isdigit(MagData[i]) == 0)
         {
@@ -450,7 +460,7 @@ int Feeds::MagParser(std::string& MagData)
     }
     if(Valid)
     {
-        return MagnetValue;
+        return MagnetValue * flag;
     }
     return -1;
 }
@@ -461,7 +471,14 @@ int Feeds::IMUParser(std::string& IMUData)
 {
     int IMUValue = 0;
     bool Valid = true;
-    for (size_t i = 1; i < IMUData.size()-1; ++i)
+    int flag = 1;
+    int start = 1;
+    if(IMUData[1] == '-')
+    {
+        flag = -1;
+        start = 2;
+    }
+    for (size_t i = start; i < IMUData.size()-1; ++i)
     {
         if(isdigit(IMUData[i]) == 0)
         {
@@ -475,7 +492,8 @@ int Feeds::IMUParser(std::string& IMUData)
     }
     if(Valid)
     {
-        return IMUValue;
+        // std::cout << "IMUVALUE :  " << IMUValue << std::endl;
+        return (IMUValue / 10000) * flag;
     }
     return -1;
 }

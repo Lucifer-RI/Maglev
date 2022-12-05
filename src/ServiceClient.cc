@@ -2,7 +2,7 @@
 
 #include "ServiceClient.h"
 
-
+ 
 /* 客户类构造函数 */
 ServiceClient::ServiceClient(int listen_fd, int service_type, const std::string& user_id, const std::string& password, const std::string& client_ipaddr)
     :   ListenFd(listen_fd), ServiceType(service_type), UserId(user_id), Password(password), Address(client_ipaddr)

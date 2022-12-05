@@ -99,7 +99,7 @@ void KF::RunFunc()
     while(FusionStatus)
     {
         /* 多通道传感器观测值获取 */
-        usleep(2000000);
+        usleep(200000);
         z = GetMeasure();
         if(ValidMeasureFlag == -1)
         {
@@ -131,12 +131,13 @@ void KF::RunFunc()
 void KF::PosGetFunc(Feeds* pfeed, int Length, std::pair<uint64_t,int>& res, int& confident_flag)
 {
     // 峰值间距（磁轨长度）
-    uint64_t distance = 7000000; /* 70cm的理想峰值间距 */
+    uint64_t distance = 7000; /* 70cm的理想峰值间距 */
     std::vector<int> signal(2,0);
     uint16_t flag;
-    /*   用于纪录变化信息的数组，
-    其中数组中元素为1则说明当前点相较前一元素为强度升高
-    数组中元素为-1则说明当前点相较前一元素为强度降低
+    /* 
+       用于纪录变化信息的数组，
+       其中数组中元素为1则说明当前点相较前一元素为强度升高
+       数组中元素为-1则说明当前点相较前一元素为强度降低
     */
     std::vector<int> sign; 
 
@@ -189,19 +190,13 @@ void KF::PosGetFunc(Feeds* pfeed, int Length, std::pair<uint64_t,int>& res, int&
         }  
         else  
         {  
-            sign.push_back(0);  
+            sign.emplace_back(0);  
         }
         if(signal[0] > 0 && signal[1] > 0 ) 
         {
             flag = 1;
         }
     } 
-
-    if(flag == 0)
-    {
-        confident_flag = 0;
-        return;
-    }
 
     for(int j = 1; j < sign.size(); j++)  
     {   
@@ -219,6 +214,23 @@ void KF::PosGetFunc(Feeds* pfeed, int Length, std::pair<uint64_t,int>& res, int&
     /*  加上第一个波峰所在采样数据的位置信息，以及波峰波谷计算的相互验证 */
     int MaxLen = indMax.size();
     int MinLen = indMin.size();
+
+    if(flag == 0)  /* 如果是无效数据，则找出上一个波峰的位置速度信息，进行叠加运算 */
+    {
+        confident_flag = 0;
+        /* 上一个波峰位置信息 */
+        if(MaxLen < 2)
+        {
+            res.first = 0;
+            res.second = 0;
+            return ; 
+        }
+        int posLast = (StartPos+indMax[MaxLen - 2])->Pos;
+        int speedLast = (StartPos+indMax[MaxLen - 2])->Speed;
+        res.first = posLast + speedLast * ((StartPos+RealProcessLength-1)->RawTime - (StartPos+indMax[MaxLen - 2])->RawTime);
+        res.second = speedLast;
+        return;
+    }
 
     /* 上一个波峰位置信息 */
     int posLast = (StartPos+indMax[MaxLen - 2])->Pos;
@@ -247,7 +259,7 @@ void KF::PosGetFunc(Feeds* pfeed, int Length, std::pair<uint64_t,int>& res, int&
 /* Pos 的 权重比较函数，取最高可行度的数据 */
 int KF::PosCompare(int posMin, int posMax, int posLast)
 {
-    int distance = 7000000;
+    int distance = 7000;
     int errorPMin =  abs(posMin-posLast);
     int errorPMax =  abs(posMax-posLast);
 
@@ -279,6 +291,7 @@ Eigen::VectorXd KF::GetMeasure()
     {
         /* 暂时还无采集数据 */
         ValidMeasureFlag = -1;
+        std::cout <<  "Initail has not enough data ! " << std::endl;
         return MeasureData;
     }
     /* 返回值不为-1，则为有效观测原始数据值 */
@@ -295,23 +308,19 @@ Eigen::VectorXd KF::GetMeasure()
     {
         std::cout << "Got no New Pos & Speed, Use last Data !!!" << std::endl;
     }
-    /* Pos */
+
+    /* Mag : Pos & Speed */
+    /* 存在多种计算方式，更据前一次IMU数据积分，根据Pos求导 */
+    /* 通过Magnet历史数据来获取速度 */
+    MeasureData(0) = MagData.first;
+    MeasureData(1) = MagData.second;
+    /* Acc */
+    MeasureData(2) = NewData.IMU;
+    /* RFID : Pos */
     if(NewData.RFIDFlag == 1)
     {
         MeasureData(0) = NewData.RFIDpos;
     }
-    else
-    {
-        MeasureData(0) = MagData.first;
-    }
-    
-    /* Speed */
-    /* 存在多种计算方式，更据前一次IMU数据积分，根据Pos求导 */
-    /* 通过Magnet历史数据来获取速度 */
-    // MeasureData(1) = NewData.IMU * 
-    MeasureData(1) = MagData.second;
-    /* Acc */
-    MeasureData(2) = NewData.IMU;
     
     /* Time */
     mMeasureTime = NewData.RawTime; 
