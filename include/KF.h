@@ -5,6 +5,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <algorithm>
 #include <unordered_map>
 #include <stdio.h>
 #include <Eigen/Dense>
@@ -25,7 +26,7 @@ public:
     /* 实际融合迭代函数,继承自DataFusion，动态多态 */
     virtual void RunFunc();
     /* 获取新数据 */
-    Eigen::VectorXd GetMeasure();
+    Eigen::VectorXd GetMeasure(StatusData* CurStatus, int& RFID_Correction);
     /* 融合算法初始化 */
     void InitFusion(Eigen::VectorXd& x, Eigen::MatrixXd& p, 
                     Eigen::MatrixXd& r, Eigen::MatrixXd& q, Eigen::MatrixXd& a,
@@ -42,12 +43,14 @@ public:
     void UpdateState(Eigen::VectorXd& z);
     /* 更新误差协方差 */
     void UpdateCov();
-    /* Pos的可性度函数 */
+    /* Pos的可信度函数 */
     int PosCompare(int,int,int);
-
     /* 由原始数据获取位置速度信息 */
     /* res参数的first为 pos， second 为 speed */
-    void PosGetFunc(Feeds* pfeed, int Length, std::pair<uint64_t,int>& res, int& confident_flag);   
+    void PosGetFunc(StatusData* CurStatus, Feeds* pfeed, int Length, 
+    std::pair<uint64_t,int>& res, int& confident_flag, long long MeasureTime);  
+    /* 波峰误差修正 */
+    void PosCorrection(int CorrectPos); 
 
 private:
     /* Runfunc中需要用到的迭代变量 */

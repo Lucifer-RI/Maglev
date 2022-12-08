@@ -245,28 +245,46 @@ using namespace std;
 
 #define CHR_DEV_IMU "/dev/ttyUSB1"
 
+#define MMAP_FILE_PATH "/home/ysfyuan/maglev_mmap_data"
+
+#define MMAP_MAX_LEN 2048*2048
+
+/* 数据源接收到的原生数据 */
+struct RawData {
+    int Magnet;  /* TMR磁场强度观测值 */
+    int MagnetFlag; /* TMR传感器通道接收数据标识 */
+    int MagMax;  /* 峰值标志位， 1为波峰，-1为波谷，0为非标征 */
+    int IMU;    /* IMU传感器的方向加速度 */
+    int IMUFlag;    /* IMU传感器通道接受数据标识 */
+    int RFIDpos;    /* RFID传感器的定位观测值 */
+    int RFIDFlag;   /* RFID传感器通道接受数据标识 */
+    long long RawTime;    /* 记录每一次的数据采集驱动时间 */
+    int Pos; /* Position   */
+    int Speed; /* Speed */
+
+};
+
+
 int main()
 {
     /* 开启驱动文件 */
-    int mFdIMU = open(CHR_DEV_IMU, O_RDWR | O_NOCTTY | O_NONBLOCK | O_NDELAY, 0777);
-    if(mFdIMU < 0)
+    int mFdmmap = open(MMAP_FILE_PATH, O_RDWR, 0777);
+    if(mFdmmap < 0)
     {
-        std::cout<<"open device IMU failed! "<< CHR_DEV_IMU <<std::endl;
+        std::cout<<"open MMAP failed! "<< CHR_DEV_IMU <<std::endl;
     }
-    std::cout<<"FdIMU is :"<<mFdIMU<<std::endl;
 
-    char buffer[100];
-    memset(buffer, 0 , sizeof(buffer));
-
-    while(1)
+    /* Mmap文件地址使用前应设置虚拟文件对应大小 */
+    ftruncate(mFdmmap, MMAP_MAX_LEN);
+    /* 共享文件映射到硬盘中，获取文件内容首地址MmapAddr */
+    void* mAddr = mmap(nullptr, MMAP_MAX_LEN, PROT_READ|PROT_WRITE, MAP_SHARED, mFdmmap, 0);
+    int WriteIndex = *(static_cast<int*>(mAddr + sizeof(int)));
+    RawData* mData = static_cast<RawData*>(mAddr + 2*sizeof(int));
+    std::cout << WriteIndex << std::endl; 
+    for (int i = 0; i < WriteIndex; i++)
     {
-        sleep(1);
-        if(mFdIMU != -1)
-        {
-            int LenIMU=read(mFdIMU, buffer, sizeof(buffer));
-            std::cout<< "LenIMU: "<< LenIMU << " data : "  << buffer << std::endl;
-        }
-        memset(buffer, 0 , sizeof(buffer));
+        std::cout << " Magnetflag : " << (mData+i)->MagnetFlag << " Magnet : " << (mData+i)->Magnet << " RFIDflag : " <<(mData+i)->RFIDFlag << " RFIDpos : " << (mData+i)->RFIDpos <<std::endl;
     }
+
     return 0;  
 }

@@ -5,8 +5,8 @@
 #define BUFFER_LEN 128 
 #define MMAP_MAX_LEN 2048*2048
 #define CHR_DEV_MAG "/dev/ttyACM0"
-#define CHR_DEV_IMU "/dev/ttyUSB0"
-#define CHR_DEV_RFID "/dev/ttyACM2"
+#define CHR_DEV_IMU "/dev/ttyUSB2"
+#define CHR_DEV_RFID "/dev/ttyUSB0"
 #define MMAP_FILE_PATH "/home/ysfyuan/maglev_mmap_data"
 
 /* 构造函数 */
@@ -38,7 +38,7 @@ Feeds::Feeds(long long cur_time, int feeds_status)
         memset(mAddr, 0, MMAP_MAX_LEN);
     }
     std::cout << "Mmap_addr : " << mAddr << std::endl;
-    mStartAddr = static_cast<RawData*>(mAddr+16);
+    mStartAddr = static_cast<RawData*>(mAddr+2*sizeof(int));
     std::cout << "Start Address : "<< mStartAddr <<std::endl;
 }
 
@@ -76,7 +76,7 @@ void Feeds::UpdateReadIndex()
 /* 获取共享文件写标志位 */
 int Feeds::GetWriteIndex()
 {
-    mWriteIndex = *(static_cast<int*>(mAddr+8));
+    mWriteIndex = *(static_cast<int*>(mAddr+sizeof(int)));
     return mWriteIndex;
 }
 
@@ -84,8 +84,8 @@ int Feeds::GetWriteIndex()
 /* 更新写标志位 */
 void Feeds::UpdateWriteIndex()
 {
-    ++(*(static_cast<int*>(mAddr+8)));
-    mWriteIndex = *(static_cast<int*>(mAddr+8));
+    ++(*(static_cast<int*>(mAddr+sizeof(int))));
+    mWriteIndex = *(static_cast<int*>(mAddr+sizeof(int)));
     return;
 }
 
@@ -94,10 +94,12 @@ void Feeds::UpdateWriteIndex()
 void Feeds::WriteData(RawData* pData)
 {
     std::cout << "Writing RawData !!! WriteIndex : " << mWriteIndex << std::endl;
+    //std::cout << pData->Magnet <<" -> " << pData->MagnetFlag <<std::endl;
     memcpy(mStartAddr+mWriteIndex, pData, sizeof(RawData));
+
+    //std::cout << (mStartAddr+mWriteIndex)->RawTime << std::endl;
     UpdateWriteIndex();
     return;
-
 }
 
 
@@ -105,25 +107,34 @@ void Feeds::WriteData(RawData* pData)
 /* 读取的数据为迭代过的数据则返回0，未迭代过的数据则返回1 */
 int Feeds::ReadData(RawData* pDataOut)
 {
-    if(mReadIndex >= mWriteIndex)
+    if(mWriteIndex == 0 || mReadIndex > mWriteIndex)
     {
-        if(mWriteIndex == 0)
-        {
-            /* 此时为系统初始化，还没有任何采集数据 */
-            std::cout << "Get nothing from Feeds !!!, Wait a moment..." << std::endl;
-            return -1;
-        }
-        else
-        {
-            std::cout << "Wait Data from Feeds !!! Got Lastest Data !!!" << std::endl;
-            /* 此时情况为新数据都已经读取完毕，没有可用的新数据，则用最近一次的数据进行迭代 */
-            /* 此处获取的数据为写标志位前一位，即最新数据 */
-            memcpy(pDataOut, mStartAddr+mWriteIndex-1, sizeof(RawData));
-        }
+        /* 此时为系统初始化，还没有任何采集数据 */
+        std::cout << "Get nothing from Feeds !!!, Wait a moment..." << std::endl;
+        return -1;
+    }
+    if(mReadIndex == mWriteIndex)
+    {
+        std::cout << "Wait Data from Feeds !!! Got Lastest Data !!!" << std::endl;
+        /* 此时情况为新数据都已经读取完毕，没有可用的新数据，则用最近一次的数据进行迭代 */
+        /* 此处获取的数据为写标志位前一位，即最新数据 */
+        // if((mStartAddr+mWriteIndex-1)->RFIDFlag == 1)
+        // {
+        //     /* 在mmap文件中标注出以及使用过的RFID数据 */
+        //     (mStartAddr+mWriteIndex-1)->RFIDFlag = 2;
+        // }
+        memcpy(pDataOut, mStartAddr+mReadIndex-1, sizeof(RawData));
         return 0;
     }
     std::cout << "Reading Data !!! ReadIndex : " << mReadIndex << std::endl;
     memcpy(pDataOut, mStartAddr+mReadIndex, sizeof(RawData));
+    // std::cout << pDataOut->Magnet <<" -> " << pDataOut->MagnetFlag <<std::endl;
+    if((mStartAddr+mReadIndex)->RFIDFlag == 1)
+    {
+        std::cout << "/********************Correction******************************/" << std::endl; 
+        (mStartAddr+mReadIndex)->RFIDFlag = 2;
+    }
+    // std::cout << "Read RFID flag : "<<pDataOut->RFIDFlag << std::endl;
     UpdateReadIndex();
     return 1;
 }
@@ -205,6 +216,7 @@ void Feeds::FeedsLoop()
         if(mFdRFID != -1)
         {
             LenRFID=read(mFdRFID, BufferRFID, sizeof(BufferRFID));
+            std::cout << "LendRFID: " << LenRFID << " -> " << BufferRFID << std::endl;
         }
 
         /* TODO: 此处设置仿真数据源 */
@@ -228,22 +240,11 @@ void Feeds::FeedsLoop()
                 {
                     valid_flag = 1;
                 }
-                switch(ret_parser.first)
+                if(ret_parser.first == 1)
                 {
-                    case 1:
-                        Renew.Magnet = ret_parser.second; 
-                        Renew.MagnetFlag = 1; 
-                        break;
-                    case 2:
-                        Renew.IMU = ret_parser.second;
-                        Renew.IMUFlag = 1;
-                        break;
-                    case 3:
-                        Renew.RFIDpos = ret_parser.second;
-                        Renew.RFIDFlag = 1;
-                        break;
-                    default: 
-                        break;
+                    Renew.Magnet = ret_parser.second; 
+                    Renew.MagnetFlag = 1; 
+                    // std::cout << "MagData!!! " << Renew.Magnet ; 
                 }
                 LenMag = -1;
             }
@@ -256,22 +257,10 @@ void Feeds::FeedsLoop()
                 {
                     valid_flag = 1;
                 }
-                switch(ret_parser.first)
+                if(ret_parser.first == 2)
                 {
-                    case 1:
-                        Renew.Magnet = ret_parser.second; 
-                        Renew.MagnetFlag = 1; 
-                        break;
-                    case 2:
-                        Renew.IMU = ret_parser.second;
-                        Renew.IMUFlag = 1;
-                        break;
-                    case 3:
-                        Renew.RFIDpos = ret_parser.second;
-                        Renew.RFIDFlag = 1;
-                        break;
-                    default: 
-                        break;
+                    Renew.IMU = ret_parser.second;
+                    Renew.IMUFlag = 1;
                 }
                 LenIMU = -1;
             }
@@ -284,36 +273,25 @@ void Feeds::FeedsLoop()
                 {
                     valid_flag = 1;
                 }
-                switch(ret_parser.first)
+                if(ret_parser.first == 3)
                 {
-                    case 1:
-                        Renew.Magnet = ret_parser.second; 
-                        Renew.MagnetFlag = 1; 
-                        break;
-                    case 2:
-                        Renew.IMU = ret_parser.second;
-                        Renew.IMUFlag = 1;
-                        break;
-                    case 3:
-                        Renew.RFIDpos = ret_parser.second;
-                        Renew.RFIDFlag = 1;
-                        break;
-                    default: 
-                        break;
+                    Renew.RFIDpos = ret_parser.second;
+                    Renew.RFIDFlag = 1;  
                 }
                 LenRFID = -1;
             }
-        }
-        /* 有效标志位为0，则此次采集数据无效，则不写入mmap中 */
-        if(valid_flag == 0)
-        {
-            continue;
         }
 
         /* 完成临时结构体的更新则清空缓冲 */
         memset(BufferMagnet,0,sizeof(BufferMagnet));
         memset(BufferIMU,0,sizeof(BufferIMU));
         memset(BufferRFID,0,sizeof(BufferRFID));
+
+        /* 有效标志位为0，则此次采集数据无效，则不写入mmap中 */
+        if(valid_flag == 0)
+        {
+            continue;
+        }
 
         /* 时间戳设置 */
         time(&raw_time);
@@ -322,6 +300,7 @@ void Feeds::FeedsLoop()
         
         /* 将临时结构体内容拷贝到mmap文件中 */
         WriteData(&Renew);
+        memset(&Renew, 0, sizeof(RawData));
     }
 }
 

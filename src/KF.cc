@@ -94,15 +94,27 @@ void KF::RunFunc()
     StatusData* pStatusData = new StatusData();
     memset(pStatusData, 0, sizeof(StatusData));
     pStatusData->StatusNum = 3;
+
+    int RFID_Correction = 0;
     
     /* 此处需考虑使用事件驱动或者周期驱动方式 */
     while(FusionStatus)
     {
         /* 多通道传感器观测值获取 */
         usleep(200000);
-        z = GetMeasure();
+        z = GetMeasure(pStatusData, RFID_Correction);
         if(ValidMeasureFlag == -1)
         {
+            continue;
+        }
+        /* 如果存在RFID信号，则加入紧耦合进行累计误差修正 */
+        if(RFID_Correction == 1)
+        {
+            pStatusData->CurPos = z(0);
+            RFID_Correction = 0;
+            // InitFusion(z, p, r, q, a, b, u, h);
+            mX = z;
+            mP = p;
             continue;
         }
         /* 根据上次估值预测 */
@@ -118,17 +130,63 @@ void KF::RunFunc()
         pStatusData->CurSpeed = mX(1);
         pStatusData->CurAcc = mX(2);
         pStatusData->CurTime = mMeasureTime;  /* 观测时间 */
-
+        // std::cout << "RFIF_Correction :  "<< RFID_Correction << std::endl;
         /* 驱动状态更新 */
         pStatus->UpdateStatus(pStatusData);
     }
+}
 
+
+/* 区间误差消除 */
+void KF::PosCorrection(int CorrectPos)
+{
+    int StartIndex = pFeed->GetReadIndex() - MeasureLength;
+    if(StartIndex < 0)
+    {
+        StartIndex = 0;
+    }
+    int EndIndex = pFeed->GetReadIndex();
+    RawData* pData = pFeed->mStartAddr;
+    int Distance = 3500;
+    int index_correct = 0;
+    for(int i = EndIndex; i >= StartIndex; --i)
+    {
+        if((pData+i)->MagMax == 1)
+        {
+            /* 该采样数据为波峰 */
+            if(CorrectPos > (index_correct * Distance))
+            {
+                (pData+i)->Pos = CorrectPos - (index_correct * Distance);
+            }
+            else
+            {
+                (pData+i)->Pos = 0;
+            }
+            ++index_correct;
+            std::cout <<"+" <<  (pData+i)->Pos / 10000 << ", "; 
+        }
+        else if((pData+i)->MagMax == -1)
+        {
+            /* 该采样数据为波峰 */
+            if(CorrectPos > (index_correct * Distance))
+            {
+                (pData+i)->Pos = CorrectPos - (index_correct * Distance);
+            }
+            else
+            {
+                (pData+i)->Pos = 0;
+            }
+            ++index_correct;
+            std::cout << "-" << (pData+i)->Pos / 10000 << ", "; 
+        }
+    }
+    std::cout << std::endl; 
 }
 
 
 /* 从Magnet相关历史数据（离散信号值）计算峰值点，从而获取Pos以及speed信息 */
 /* TODO : 待验算证明 */
-void KF::PosGetFunc(Feeds* pfeed, int Length, std::pair<uint64_t,int>& res, int& confident_flag)
+void KF::PosGetFunc(StatusData* CurStatus, Feeds* pfeed, int Length, std::pair<uint64_t,int>& res, int& confident_flag, long long MeasureTime)
 {
     // 峰值间距（磁轨长度）
     uint64_t distance = 7000; /* 70cm的理想峰值间距 */
@@ -144,9 +202,9 @@ void KF::PosGetFunc(Feeds* pfeed, int Length, std::pair<uint64_t,int>& res, int&
     std::vector<int> indMax;  
     std::vector<int> indMin;  
     /* 获取读标志位 */
-    uint16_t HasReadIndex = pFeed->GetReadIndex();
+    uint16_t HasReadIndex = pFeed->GetReadIndex() - 1;
     /* 获取检测数据队列的队首地址 */
-    std::cout << "HasReadIndex : " << HasReadIndex << std::endl;
+    // std::cout << "HasReadIndex : " << HasReadIndex << std::endl;
     int RealProcessLength = 0;
     if(HasReadIndex <= Length)
     {
@@ -157,22 +215,29 @@ void KF::PosGetFunc(Feeds* pfeed, int Length, std::pair<uint64_t,int>& res, int&
         RealProcessLength = Length;
     }
     
-    RawData* StartPos = static_cast<RawData*>(pFeed->mAddr + sizeof(int)*2) + (HasReadIndex - RealProcessLength + 1);
+    RawData* StartPos = pFeed->mStartAddr + (HasReadIndex - RealProcessLength);
     
     std::vector<int> indexVec;
-
+    // std::cout << "Catch High & Los" << std::endl;
     for(int i = 0; i < RealProcessLength; i++)  
     {  
         /* 取出当前最新的Length个带Magnet数据的Rawdata */
+        // std::cout << (StartPos+i)->MagnetFlag << " . ";
         if(!(StartPos+i)->MagnetFlag)
         {
             continue;
         }
-        
         /* 将有效数据下标纪录在数组中 */
         indexVec.emplace_back(i);
-        uint16_t diff = (StartPos+i)->Magnet - (StartPos+i-1)->Magnet;  
-        if(diff>0)  
+        /* 有效数据小于2则不进行判断 */
+        if(indexVec.size() < 2)
+        {
+            continue;
+        }
+        
+        int diff = ((StartPos+i)->Magnet) - ((StartPos+indexVec[indexVec.size()-2])->Magnet);  
+        // std::cout << diff << " , ";
+        if(diff > 500000)  
         {  
             if(!flag)
             {
@@ -180,7 +245,7 @@ void KF::PosGetFunc(Feeds* pfeed, int Length, std::pair<uint64_t,int>& res, int&
             }
             sign.emplace_back(1);  
         }  
-        else if(diff<0)  
+        else if(diff< -500000)  
         { 
             if(!flag )
             {
@@ -197,17 +262,20 @@ void KF::PosGetFunc(Feeds* pfeed, int Length, std::pair<uint64_t,int>& res, int&
             flag = 1;
         }
     } 
-
     for(int j = 1; j < sign.size(); j++)  
     {   
-        int diff = sign[j]-sign[j-1]; 
-        if(diff > 0)  
+        int diff_max = sign[j]-sign[j-1]; 
+        if(diff_max > 0)  
         { 
+            std::cout <<"+ : " << indexVec[j] + (HasReadIndex - RealProcessLength) << std::endl; 
             indMax.emplace_back(indexVec[j]);
+            (StartPos+indexVec[j])->MagMax = 1;
         }  
-        else if(diff < 0)  
+        else if(diff_max < 0)  
         {  
-            indMin.emplace_back(indexVec[j]);  
+            std::cout <<"- : " << indexVec[j] + (HasReadIndex - RealProcessLength) << std::endl; 
+            indMin.emplace_back(indexVec[j]);
+            (StartPos+indexVec[j])->MagMax = -1;
         }  
     }
       
@@ -215,68 +283,177 @@ void KF::PosGetFunc(Feeds* pfeed, int Length, std::pair<uint64_t,int>& res, int&
     int MaxLen = indMax.size();
     int MinLen = indMin.size();
 
-    if(flag == 0)  /* 如果是无效数据，则找出上一个波峰的位置速度信息，进行叠加运算 */
+    if(flag == 0 || (MaxLen < 2 && MinLen < 2))  /* 如果是无效数据，则找出上一个波峰的位置速度信息，进行叠加运算 */
     {
         confident_flag = 0;
         /* 上一个波峰位置信息 */
-        if(MaxLen < 2)
-        {
-            res.first = 0;
-            res.second = 0;
-            return ; 
-        }
-        int posLast = (StartPos+indMax[MaxLen - 2])->Pos;
-        int speedLast = (StartPos+indMax[MaxLen - 2])->Speed;
-        res.first = posLast + speedLast * ((StartPos+RealProcessLength-1)->RawTime - (StartPos+indMax[MaxLen - 2])->RawTime);
+        // if(MaxLen < 2)
+        // {
+        //     res.first = 0;
+        //     res.second = 0;
+        //     std::cout << "Has not Enough Maxdata for Mag" << std::endl;
+        //     return ; 
+        // }
+        std::cout << "Has Not Confident Maxdata for Mag" << std::endl;
+        int posLast = CurStatus->CurPos;
+        int speedLast = CurStatus->CurSpeed;
+        res.first = CurStatus->CurPos + CurStatus->CurSpeed * (MeasureTime - CurStatus->CurTime);
         res.second = speedLast;
+        (pFeed->mStartAddr+HasReadIndex)->Pos = res.first;
+        (pFeed->mStartAddr+HasReadIndex)->Speed = res.second;
+        /* 将速度和位置信息赋给最后一个波峰或者波谷 */
+        if(MaxLen > 1 && MinLen > 1)
+        {
+            (StartPos+std::max(indMax.back(), indMin.back()))->Pos = res.first;
+            (StartPos+std::max(indMax.back(), indMin.back()))->Speed = res.second;
+        }
+        else if(MaxLen > 1)
+        {
+            (StartPos+indMax.back())->Pos = res.first;
+            (StartPos+indMax.back())->Speed = res.second;
+        }
+        else if(MinLen > 1)
+        {
+            (StartPos+indMin.back())->Pos = res.first;
+            (StartPos+indMin.back())->Speed = res.second;
+        }
         return;
     }
 
     /* 上一个波峰位置信息 */
-    int posLast = (StartPos+indMax[MaxLen - 2])->Pos;
+    /* TODO: 校验逻辑 */
+    if(MinLen >= 2)
+    {
+        /* 扫描到两个以上波谷 */
+        int posLastMin = (StartPos+indMin[MinLen - 2])->Pos;
+        int posMin = distance + posLastMin;  /* posMax为根据前一个波谷来计算最近波峰的位置 */
+        int posPre = posLastMin;  /* posPre 为根据前一个b波谷和当前速度来计算的当前的位置 */
+        if(MeasureTime > (StartPos+indMin[MinLen - 2])->RawTime)
+        {
+            /* posLastMin为利用前一个波谷的位置信息以及那时的速度信息计算的当前位置信息，
+            用作可靠性比较 */
+            posLastMin += CurStatus->CurSpeed * (MeasureTime - (StartPos+indMin[MinLen - 2])->RawTime);
+            posPre += (StartPos+indMin[MinLen - 2])->Speed * (MeasureTime - (StartPos+indMin[MinLen - 2])->RawTime);
+        }
+        std::cout << " **********************波谷 MagCompare ******************"<< std::endl;
+        std::cout << posLastMin << " : " << posPre << " : " << posMin << std::endl;
+        
+        res.first = PosCompare(posMin, posPre, posLastMin);
+    }
 
-    int posMax = distance + posLast;
-    int posMin = distance + posLast;
-    /* 利用上一个波峰的位置信息以及速度信息计算当前最新波峰的位置信息，用作可靠性比较 */
-    posLast += (StartPos+indMax[MaxLen - 2])->Speed * ((StartPos+indMax[MaxLen - 1])->RawTime - (StartPos+indMax[MaxLen - 2])->RawTime);
-    res.first = PosCompare(posMax, posMin, posLast);
+    if(MaxLen >= 2)
+    {
+        /* 扫描到两个以上波峰 */
+        int posLastMax = (StartPos+indMax[MaxLen - 2])->Pos;
+        int posMax = distance + posLastMax;  /* posMax为根据前一个波峰来计算最近波峰的位置 */
+        int posPre = posLastMax;  /* posPre 为根据前一个波峰和当前速度来计算的当前的位置 */
+        if(MeasureTime > (StartPos+indMax[MaxLen - 2])->RawTime)
+        {
+            /* posLastMax为利用前一个波峰的位置信息以及那时的速度信息计算的当前位置信息，
+            用作可靠性比较 */
+            posLastMax += CurStatus->CurSpeed * (MeasureTime - (StartPos+indMax[MaxLen - 2])->RawTime);
+            posPre += (StartPos+indMax[MaxLen - 2])->Speed * (MeasureTime - (StartPos+indMax[MaxLen - 2])->RawTime);
+        }
+        std::cout << " **********************波峰 MagCompare ******************"<< std::endl;
+        std::cout << posLastMax << " : " << posPre << " : " << posMax << std::endl;
+        
+        res.first = PosCompare(posMax, posPre, posLastMax); 
+    }
+    // int posMax = distance + posLast;
+    // int posMin = distance + posLast;
+    // /* 利用上一个波峰的位置信息以及速度信息计算当前最新波峰的位置信息，用作可靠性比较 */
+    // posLast += (StartPos+indMax[MaxLen - 2])->Speed * ((StartPos+indMax[MaxLen - 1])->RawTime - (StartPos+indMax[MaxLen - 2])->RawTime);
+    // res.first = PosCompare(posMax, posMin, posLast);
 
     /* 将位置信息计算值赋给结构体存放在mmap中 */
-    (StartPos + indMax.back())->Pos = res.first;
-
-    /* TODO: 速度验证方案 */
-    for(int m = 2; m<indMax.size(); m++)     
-    {   
-        res.second = (distance / (indMax[m]-indMax[m-2])) * 2;
+    if(MaxLen > 0 && MinLen > 0)
+    {
+        if(indMax.back() > indMin.back())
+        {
+            (StartPos + indMax.back())->Pos = res.first;
+        }
+        else
+        {
+            (StartPos + indMin.back())->Pos = res.first;
+        }
     }
-    /* 将速度信息计算值赋给结构体存放在mmap中 */
-    (StartPos + indMax.back())->Speed = res.second;
+    else if(MaxLen == 0 || MinLen > 0)
+    {
+        (StartPos + indMin.back())->Pos = res.first;
+    }
+    else if(MinLen == 0 || MaxLen > 0)
+    {
+        (StartPos + indMax.back())->Pos = res.first;
+    }
+
+    /* 速度计算方案 */
+    if(MaxLen >= 2)
+    {
+        /* 根据时间求速度 */
+        /* 取前一个波峰的位置和时间，当前的时间和位置结果 */
+        res.second = (res.first - (StartPos + indMax[MaxLen-2])->Pos) / (MeasureTime - (StartPos + indMax[MaxLen-2])->RawTime);
+    }
+    else
+    {
+        res.second = (res.first - (StartPos + indMin[MinLen-2])->Pos) / (MeasureTime - (StartPos + indMin[MinLen-2])->RawTime);
+    }
+    /* 将速度信息计算值赋给结构体存放在最后一个波峰或者波谷mmap中 */
+    if(MaxLen > 0 && MinLen > 0)
+    {
+        (StartPos + std::max(indMax.back(), indMin.back()))->Speed = res.second;
+    }
+    else if(MaxLen > 0 )
+    {
+        (StartPos + indMax.back())->Speed = res.second;
+    }
+    else
+    {
+        (StartPos + indMin.back())->Speed = res.second;
+    }
+    
+    (pFeed->mStartAddr+HasReadIndex)->Pos = res.first;
+    (pFeed->mStartAddr+HasReadIndex)->Speed = res.second;
     std::cout << "Pos : " << res.first << " Speed : " << res.second << std::endl;
     return;
 }
 
 
 /* Pos 的 权重比较函数，取最高可行度的数据 */
-int KF::PosCompare(int posMin, int posMax, int posLast)
+int KF::PosCompare(int pos1, int pos2, int pos3)
 {
+    // if(posLast >= posMin && posLast >= posMax && posLast%50000 == 0)
+    // {
+    //     return posLast;
+    // }
+
+    // if(posMax == posMin)
+    // {
+    //     return posMax/2;
+    // }
+    if(pos2 == 0 && pos3 == 0)
+    {
+        return pos1;
+    }
+
     int distance = 7000;
-    int errorPMin =  abs(posMin-posLast);
-    int errorPMax =  abs(posMax-posLast);
+    int errorPMin =  abs(pos2-pos1);
+    int errorPMax =  abs(pos3-pos1);
+
 
     if (errorPMin > distance || errorPMax > distance)
     {
-        return posLast;
+        return pos1;
     }
     else if(errorPMin < errorPMax)
     {
-        return posMin;
+        return pos2;
     }
-    return posMax;
+    return pos3;
 }
 
 
 /* GetMeasure实现多通道传感器观测值获取*/ 
-Eigen::VectorXd KF::GetMeasure()
+Eigen::VectorXd KF::GetMeasure(StatusData* CurStatus, int& RFID_Correction)
 {
     /* 静态构造原始数据结构体 */
     RawData NewData;
@@ -285,8 +462,9 @@ Eigen::VectorXd KF::GetMeasure()
     /* ret 可用于调节滤波系统的数据获取筛选 */
     Eigen::VectorXd MeasureData;
     MeasureData.resize(MeasureSize);
-
+    //std::cout << "NewData: " << NewData.RFIDFlag << std::endl;
     int ret = pFeed->ReadData(&NewData);
+    //std::cout<< "Measure Read : " << NewData.RawTime <<std::endl;
     if(ret == -1)
     {
         /* 暂时还无采集数据 */
@@ -296,34 +474,52 @@ Eigen::VectorXd KF::GetMeasure()
     }
     /* 返回值不为-1，则为有效观测原始数据值 */
     ValidMeasureFlag = 1;
-    /* 获取有限观测数据 */
-    /* Magnet需要转化成常规pos数据和speed数据 */
-    /* 其中pos使用uint64_t, 来防止溢出 */
-    std::pair<uint64_t, int> MagData;
-    int Confident_flag = 1;  /* 用于标志本次观测生成数据是否为有效值 */
-    // std::cout << "PosGETfUNC !" << std::endl;
-    PosGetFunc(pFeed, MeasureLength, MagData, Confident_flag);
-    /* 若MagData为{-1，-1}， 则说明为无效数据段，则没有新的有效pos数据和speed数据 */
-    if(Confident_flag == 0)
-    {
-        std::cout << "Got no New Pos & Speed, Use last Data !!!" << std::endl;
-    }
-
-    /* Mag : Pos & Speed */
-    /* 存在多种计算方式，更据前一次IMU数据积分，根据Pos求导 */
-    /* 通过Magnet历史数据来获取速度 */
-    MeasureData(0) = MagData.first;
-    MeasureData(1) = MagData.second;
-    /* Acc */
-    MeasureData(2) = NewData.IMU;
-    /* RFID : Pos */
+    // std::cout << " NewData:RFIDflag : " << NewData.RFIDFlag << std::endl;
     if(NewData.RFIDFlag == 1)
     {
+        /* RFID : Pos & Speed */
+        /* 通过历史数据来获取速度 */
+        RFID_Correction = 1;
         MeasureData(0) = NewData.RFIDpos;
+        if(NewData.RawTime == CurStatus->CurTime)
+        {
+            MeasureData(1) = CurStatus->CurSpeed;
+        }
+        else
+        {
+            MeasureData(1) = (NewData.RFIDpos - CurStatus->CurPos) / (NewData.RawTime - CurStatus->CurTime);
+        }
+        /* 区间误差消除,利用RFID的绝对位置信息，对后续会参与运算的前段波峰位置信息进行误差修正 */
+        PosCorrection(NewData.RFIDpos);
+        NewData.RFIDFlag = 2;
     }
+    else
+    {
+        /* 获取有限观测数据 */
+        /* Magnet需要转化成常规pos数据和speed数据 */
+        /* 其中pos使用uint64_t, 来防止溢出 */
+        std::pair<uint64_t, int> MagData;
+        int Confident_flag = 1;  /* 用于标志本次观测生成数据是否为有效值 */
+        // std::cout << "PosGETfUNC !" << std::endl;
+        PosGetFunc(CurStatus, pFeed, MeasureLength, MagData, Confident_flag, NewData.RawTime);
+        /* 若MagData为{-1，-1}， 则说明为无效数据段，则没有新的有效pos数据和speed数据 */
+        if(Confident_flag == 0)
+        {
+            std::cout << "Got no New Pos & Speed, Use last Data !!!" << std::endl;
+        }
+        /* Mag : Pos & Speed */
+        /* 存在多种计算方式，更据前一次IMU数据积分，根据Pos求导 */
+        /* 通过Magnet历史数据来获取速度 */
+        MeasureData(0) = MagData.first;
+        MeasureData(1) = MagData.second;
+    }
+
+    /* Acc */
+    MeasureData(2) = NewData.IMU;
     
     /* Time */
     mMeasureTime = NewData.RawTime; 
+
     return MeasureData;
 }
 
@@ -333,7 +529,7 @@ void KF::InitFusion(Eigen::VectorXd& x, Eigen::MatrixXd& p,
                     Eigen::MatrixXd& r, Eigen::MatrixXd& q, Eigen::MatrixXd& a,
                     Eigen::MatrixXd& b, Eigen::VectorXd& u, Eigen::MatrixXd& h)
 {
-    std::cout << "FUsion(KF)  Initial ... " << std::endl;
+    // std::cout << "Fusion(UKF)  Initial ... " << std::endl;
     /* 矩阵向量初始化 */
     mX.resize(StatusSize);
     mX.setZero();
@@ -374,7 +570,7 @@ void KF::InitFusion(Eigen::VectorXd& x, Eigen::MatrixXd& p,
     mI.resize(StatusSize, StatusSize);
     mI.setIdentity();
 
-    std::cout << "Initial Completed ! " << std::endl;
+    // std::cout << "Initial Completed ! " << std::endl;
 
 }
 

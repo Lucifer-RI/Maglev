@@ -123,8 +123,8 @@ void SystemStatus::UpdateStatus(StatusData* pStatus)
 void SystemStatus::StatusMonitor()
 {
     /* 打印用于开发过程验证 */
-    std::cout << "Got Update ("  << CurStatusData.CurTime << "): " << " Acc -> " <<CurStatusData.CurAcc  << " Speed -> " << CurStatusData.CurSpeed 
-    << " Pos -> " << CurStatusData.CurPos << std::endl;
+    std::cout << "Got Update ("  << CurStatusData.CurTime << "): " << " Acc -> " <<CurStatusData.CurAcc << " m/s2 " << " Speed -> " << (double)CurStatusData.CurSpeed /10000 << " m/s "
+    << " Pos -> " << (double)CurStatusData.CurPos / 10000 << " m"<< std::endl;
 }
  
 

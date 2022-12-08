@@ -51,7 +51,8 @@
         "typeindex": "cpp",
         "typeinfo": "cpp",
         "dense": "cpp",
-        "string": "cpp"
+        "string": "cpp",
+        "random": "cpp"
     },
     "C_Cpp.errorSquiggles": "Enabled"
 }
