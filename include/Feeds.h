@@ -17,6 +17,8 @@
 #include <memory.h>
 #include <string.h>
 #include <time.h>
+#include <termios.h>
+#include <errno.h>
 
 
 /* 数据源接收到的原生数据 */
